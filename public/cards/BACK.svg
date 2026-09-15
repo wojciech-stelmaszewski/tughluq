@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 167.0869141 242.6669922" width="167.0869141pt" height="242.6669922pt">
+  <path fill="#FFFFFF" stroke="#000000" stroke-width="0.5" d="M166.8369141,235.5478516c0,3.7773438-3.0869141,6.8691406-6.8710938,6.8691406H7.1108398c-3.7749023,0-6.8608398-3.0917969-6.8608398-6.8691406V7.1201172C0.25,3.3427734,3.3359375,0.25,7.1108398,0.25h152.8549805c3.7841797,0,6.8710938,3.0927734,6.8710938,6.8701172v228.4277344z"/>
+  <rect x="8.4" y="8.4" width="150.3" height="225.9" rx="5" fill="#7A1020"/>
+  <rect x="13.2" y="13.2" width="140.7" height="216.3" rx="3.4" fill="none" stroke="#F2D6A2" stroke-width="1.1"/>
+  <g fill="none" stroke="#F2D6A2" stroke-width="0.45">
+    <path d="M28,28 H139 V215 H28 Z"/>
+    <path d="M36,40 L131,203 M131,40 L36,203"/>
+    <path d="M83.5,40 V203 M36,121.3 H131"/>
+  </g>
+  <g fill="#F2D6A2">
+    <path transform="translate(83.54,88) scale(1.35)" d="M0,-9 a8,9 0 1 1 0,18 a8,9 0 1 1 0,-18 M-3.2,-3 a1.8,2.2 0 1 0 0.1,0 M3.2,-3 a1.8,2.2 0 1 0 0.1,0 M-4,5 h8 v1.4 h-8 z"/>
+    <text x="83.54" y="132" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11">ZOMBIE HUNT</text>
+  </g>
+</svg>

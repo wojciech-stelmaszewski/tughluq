@@ -1,0 +1,15 @@
+# Third-party artwork
+
+## Standard playing cards
+
+Regular card faces in `public/cards/` (A–K of all four suits, plus the two jokers) are **Byron Knoll**'s vector playing cards.
+
+- Source: [vector-playing-cards](https://code.google.com/p/vector-playing-cards/) (mirrored at [notpeter/Vector-Playing-Cards](https://github.com/notpeter/Vector-Playing-Cards))
+- License: public domain (optionally WTFPL)
+- Attribution is not required; it is recorded here in thanks.
+
+## Special cards
+
+`Z.png`, `S.png`, and `V.png` are original illustrations made for this project. Their layout follows the Netflix *Zombie Hunt* props (vertical title, cream field, one central picture) as shown on the [Fandom page](https://aliceinborderland.fandom.com/wiki/Zombie_Hunt_(Netflix)). They are not scans or copies of the show artwork.
+
+`BACK.svg` was drawn for this project in the same frame.

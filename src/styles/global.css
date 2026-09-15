@@ -1,0 +1,242 @@
+:root {
+  color-scheme: dark;
+  --ink: #e8eef2;
+  --muted: #93a3ad;
+  --line: rgba(255, 255, 255, 0.1);
+  --panel: rgba(10, 16, 20, 0.72);
+  --cyan: #5ad4ea;
+  --green: #7be15a;
+  --brass: #e0b15a;
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1115;
+}
+
+#root {
+  position: relative;
+}
+
+.canvas-root {
+  position: absolute;
+  inset: 0;
+}
+
+.hud-panel {
+  position: absolute;
+  z-index: 2;
+  width: min(320px, calc(100vw - 32px));
+  padding: 18px 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.hud-controls {
+  top: 20px;
+  left: 20px;
+  pointer-events: auto;
+}
+
+.hud-legend {
+  top: 20px;
+  right: 20px;
+  width: min(380px, calc(100vw - 32px));
+}
+
+.hud-kicker {
+  margin: 0 0 6px;
+  color: var(--cyan);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hud-panel h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.hud-sub,
+.hud-status {
+  margin: 4px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.hud-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+}
+
+.hud-field input:focus {
+  outline: 1px solid var(--cyan);
+}
+
+.hud-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+button {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+button.primary {
+  background: #12343c;
+  border-color: #2b6d7c;
+  color: var(--cyan);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.hud-error {
+  margin: 10px 0 0;
+  color: #ff8b8b;
+  font-size: 12px;
+}
+
+.hud-scene-error {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 3;
+  max-width: 420px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 139, 139, 0.35);
+  background: rgba(20, 8, 8, 0.8);
+}
+
+.hud-legend dl {
+  margin: 10px 0 14px;
+}
+
+.hud-legend dl div {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.hud-legend dt {
+  margin: 0;
+  color: var(--muted);
+}
+
+.hud-legend dd {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.hud-legend dd.zombie {
+  color: var(--green);
+}
+
+.hud-legend dd.vaccine {
+  color: var(--cyan);
+}
+
+.card-proof {
+  margin: 0 0 12px;
+}
+
+.card-proof ul {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card-proof img {
+  display: block;
+  width: 100%;
+  border-radius: 8% / 5.5%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.swatches i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+.swatches i.regular {
+  background: #f4efe6;
+}
+
+.swatches i.shotgun {
+  background: var(--brass);
+}
+
+.swatches i.zombie {
+  background: var(--green);
+}
+
+.swatches i.vaccine {
+  background: var(--cyan);
+}
