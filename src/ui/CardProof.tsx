@@ -3,10 +3,9 @@ import { cardAssetUrl } from '../scene/cardTextures';
 
 const SAMPLES: Card[] = [
   { id: 'proof-as', kind: 'regular', suit: 'spades', rank: 'A' },
-  { id: 'proof-10h', kind: 'regular', suit: 'hearts', rank: '10' },
-  { id: 'proof-jd', kind: 'regular', suit: 'diamonds', rank: 'J' },
-  { id: 'proof-qc', kind: 'regular', suit: 'clubs', rank: 'Q' },
-  { id: 'proof-ks', kind: 'regular', suit: 'spades', rank: 'K' },
+  { id: 'proof-2h', kind: 'regular', suit: 'hearts', rank: '2' },
+  { id: 'proof-7d', kind: 'regular', suit: 'diamonds', rank: '7' },
+  { id: 'proof-10c', kind: 'regular', suit: 'clubs', rank: '10' },
   { id: 'proof-z', kind: 'zombie' },
   { id: 'proof-s', kind: 'shotgun' },
   { id: 'proof-v', kind: 'vaccine' },

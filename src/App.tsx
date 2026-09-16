@@ -23,16 +23,18 @@ export function App() {
 
   if (!ready) {
     return (
-      <aside className="hud-panel hud-controls">
-        <p className="hud-kicker">National Institute of Virus Research</p>
-        <h1>Zombie Hunt</h1>
-        <p className="hud-status">{loadError ?? 'Loading deck…'}</p>
-      </aside>
+      <div className="lab-root">
+        <aside className="hud-panel hud-controls">
+          <p className="hud-kicker">National Institute of Virus Research</p>
+          <h1>Zombie Hunt</h1>
+          <p className="hud-status">{loadError ?? 'Loading deck…'}</p>
+        </aside>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="lab-root">
       <div className="canvas-root">
         <R3FErrorBoundary>
           <Canvas
@@ -68,6 +70,6 @@ export function App() {
         zombieHolder={state.zombieHolder}
         vaccineHolders={state.vaccineHolders}
       />
-    </>
+    </div>
   );
 }

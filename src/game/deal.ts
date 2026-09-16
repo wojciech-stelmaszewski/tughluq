@@ -1,9 +1,9 @@
 import { createRegularPool, createSpecialCard } from './deck';
 import { createRng, pickDistinctIndices, shuffleInPlace } from './rng';
 import {
+  HAND_SIZE,
   MAX_PLAYERS,
   MIN_PLAYERS,
-  REGULAR_CARDS_PER_PLAYER,
   type Deal,
   type DealParams,
   type PlayerHand,
@@ -31,36 +31,43 @@ export function deal(params: DealParams, seed: number): Deal {
   }
 
   const random = createRng(seed);
-  const regularNeeded = params.playerCount * REGULAR_CARDS_PER_PLAYER;
-  const regularPool = shuffleInPlace(createRegularPool(regularNeeded), random);
-
-  const players: PlayerHand[] = [];
-  for (let i = 0; i < params.playerCount; i += 1) {
-    const regular = regularPool.slice(i * REGULAR_CARDS_PER_PLAYER, (i + 1) * REGULAR_CARDS_PER_PLAYER);
-    players.push({
-      id: `player-${padPlayerIndex(i)}`,
-      displayName: `Player ${padPlayerIndex(i)}`,
-      cards: [...regular, createSpecialCard('shotgun', i)],
-    });
-  }
-
   const [zombieIndex] = pickDistinctIndices(1, params.playerCount, random);
   if (zombieIndex === undefined) {
     throw new Error('Failed to assign the seed zombie');
   }
-  const zombieHolder = players[zombieIndex];
-  if (!zombieHolder) {
-    throw new Error('Zombie holder is missing');
-  }
-  zombieHolder.cards.push(createSpecialCard('zombie', zombieIndex));
+  const vaccineIndices = new Set(pickDistinctIndices(params.vaccineCount, params.playerCount, random));
 
-  const vaccineIndices = pickDistinctIndices(params.vaccineCount, params.playerCount, random);
-  for (const index of vaccineIndices) {
-    const holder = players[index];
-    if (!holder) {
-      continue;
+  const regularCounts = Array.from({ length: params.playerCount }, (_, index) => {
+    let specials = 1;
+    if (index === zombieIndex) {
+      specials += 1;
     }
-    holder.cards.push(createSpecialCard('vaccine', index));
+    if (vaccineIndices.has(index)) {
+      specials += 1;
+    }
+    return HAND_SIZE - specials;
+  });
+  const regularNeeded = regularCounts.reduce((sum, count) => sum + count, 0);
+  const regularPool = shuffleInPlace(createRegularPool(regularNeeded), random);
+
+  const players: PlayerHand[] = [];
+  let offset = 0;
+  for (let i = 0; i < params.playerCount; i += 1) {
+    const regularCount = regularCounts[i] ?? 0;
+    const regular = regularPool.slice(offset, offset + regularCount);
+    offset += regularCount;
+    const cards = [...regular, createSpecialCard('shotgun', i)];
+    if (i === zombieIndex) {
+      cards.push(createSpecialCard('zombie', i));
+    }
+    if (vaccineIndices.has(i)) {
+      cards.push(createSpecialCard('vaccine', i));
+    }
+    players.push({
+      id: `player-${padPlayerIndex(i)}`,
+      displayName: `Player ${padPlayerIndex(i)}`,
+      cards,
+    });
   }
 
   return { params, seed, players };

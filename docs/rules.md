@@ -11,39 +11,40 @@ Live-action debut: Season 3, Episodes 2–3. No manga prototype.
 - **Canon occupancy:** 64 players, **four teams of 16**
 - **Duration:** 20 rounds
 
-## Opening deal (Phase 1 implements this)
+## Opening deal
 
-Starting items listed on the page: **seven playing cards**.
-
-In the same rules block:
+Locked 2026-09-16: each player is dealt **exactly 7 cards, specials included**.
 
 | Card | How it is dealt |
 | --- | --- |
-| Number / suit cards | **7** per player. Used in one-on-one mini-games. |
-| Shotgun | **1 per player**, guaranteed. |
-| Zombie | **1 per group**, given to one person in that group. |
-| Vaccine | Distributed **randomly among members of each group**. Count is not stated on the page — in this simulator it is a deal parameter. |
+| Number / suit cards | Fill the remaining slots after specials. Typical human: **6** numbers + Shotgun. |
+| Shotgun | **1 per player**, occupies one of the seven slots. |
+| Zombie | **1 per group**, occupies one slot of that player (5 numbers + Shotgun + Zombie). |
+| Vaccine | Random distinct players. Occupies one slot. Count is a deal parameter. |
 
-Phase 1 treats Shotgun / Zombie / Vaccine as **extra special cards** on top of the seven number cards. If you want Shotgun to occupy one of the seven slots, say so before implementation.
+A player may hold Shotgun + Zombie + Vaccine (4 numbers). Infection later may **add** a Zombie card, so a hand can grow past 7 after the opening deal.
 
-A player may hold both Zombie and Vaccine. Vaccine cannot later be used on oneself.
+Vaccine cannot later be used on oneself.
 
-## Mini-game (later phases)
+## Mini-game
 
-- Pairing is **one-on-one** at facility tables.
-- Players place a card of the **same suit as the hand dealt to them**.
-- The **highest cumulative total** wins that mini-game.
-- The winner **receives one card** from the loser.
+Locked 2026-09-16: each player **chooses one suit from their own hand** and places those number cards. Compare **sums**. The two piles do **not** have to be the same suit.
 
-Exact meaning of “cumulative total” (single card value vs. a sum of several plays) is **deferred to Phase 3**. Phase 1 does not resolve duels.
+See [rules-audit.md](./rules-audit.md) for items still open.
+
+- Pairing is **one-on-one**. Choose any living opponent (the watch loop picks at random across the facility). One bye if the living count is odd.
+- A player may place **any non-empty subset** of one suit. Compare sums.
+- Winner takes **one card** the loser placed on the table.
+- Locked 2026-09-16: **no J / Q / K**. Ace = **1**. A tie steals nothing.
+- Specials may be placed with the pile or alone. An uncancelled Zombie still trumps the total.
 
 ## Special cards (later phases)
 
-**Zombie** — trumps every other card. The loser becomes infected; a Zombie card is **added** to their hand.
+**Zombie** — trumps every other card unless a Vaccine cancels it. The loser becomes infected and **receives a copy** of the Zombie card. The attacker **keeps** theirs.
 
 **Shotgun** — may be used **at any time**, whether or not a Zombie card is on the table. Eliminates a zombie (stops multiplication). Ineffective against humans. **One-use**, then gone.
 
-**Vaccine** — when placed, cancels the Zombie card and turns that zombie back into a human. **Cannot be used on oneself.**
+**Vaccine** — cancels a **Zombie card placed this duel** and turns that player back into a human. Then the number sums decide the table. If no Zombie was placed, the Vaccine is spent and does nothing. **Cannot be used on oneself.**
 
 ## End conditions (later phases)
 
@@ -58,4 +59,4 @@ Canon solution (narrative, not encoded in Phase 1): convert everyone to zombies.
 
 ## Scope note
 
-Phase 1 only **deals** one configurable group. It does not pair players, play suits, infect, shoot, vaccinate, or score 20 rounds.
+The 3D lab only **deals** one group. `/watch` runs the 20-round match with a random legal policy.

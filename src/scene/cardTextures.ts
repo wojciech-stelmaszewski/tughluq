@@ -1,5 +1,8 @@
 import { CanvasTexture, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import type { Card, Rank, Suit } from '../game/types';
+import { cardAssetUrl } from '../game/cardArt';
+import { RANKS, SUITS, type Card, type Suit } from '../game/types';
+
+export { cardAssetUrl };
 
 const TEX_WIDTH = 512;
 const TEX_HEIGHT = 744;
@@ -12,22 +15,6 @@ const SUIT_FILE: Record<Suit, string> = {
   diamonds: 'D',
   clubs: 'C',
 };
-
-export function cardAssetUrl(card: Card): string {
-  if (card.kind === 'zombie') {
-    return '/cards/Z.png';
-  }
-  if (card.kind === 'shotgun') {
-    return '/cards/S.png';
-  }
-  if (card.kind === 'vaccine') {
-    return '/cards/V.png';
-  }
-  if (card.suit && card.rank) {
-    return `/cards/${card.rank}${SUIT_FILE[card.suit]}.svg`;
-  }
-  return '/cards/BACK.svg';
-}
 
 function makeCanvas(): CanvasRenderingContext2D {
   const canvas = document.createElement('canvas');
@@ -99,9 +86,6 @@ export function getCardBackTexture(): CanvasTexture {
 export function specialTint(_kind: Card['kind']): string {
   return '#e8dfd0';
 }
-
-const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 
 export async function preloadDeckTextures(): Promise<void> {
   const urls = ['/cards/BACK.svg', '/cards/Z.png', '/cards/S.png', '/cards/V.png'];

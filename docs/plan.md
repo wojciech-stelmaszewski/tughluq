@@ -14,11 +14,11 @@ The app is a **simulator / laboratory**, not a multiplayer product. A human oper
 Canonical extract: [rules.md](./rules.md) (Fandom *Zombie Hunt (Netflix)*, provided 2026-09-15).
 
 - Venue: National Institute of Virus Research. **4 groups × 16 = 64**, **20 rounds**.
-- Each player starts with **7 number cards**. **1 Shotgun** is guaranteed per player (treated as an extra special card in Phase 1).
-- **1 Zombie** per group. It trumps every card. The loser is infected and **receives a new Zombie card**.
-- **Vaccine** cards are random within the group. Playing one cancels a Zombie and restores that opponent to human. **Cannot be used on oneself.**
+- Each player starts with **exactly 7 cards, specials included**. Shotgun is guaranteed and occupies a slot.
+- **1 Zombie** per group. It trumps every card unless a Vaccine cancels it. The loser is infected and **receives a copy**; the attacker keeps theirs.
+- **Vaccine** cards are random within the group. Playing one cancels a **placed** Zombie card and restores that player to human, then sums decide. **Cannot be used on oneself.**
 - **Shotgun** may be used at any time, even if no Zombie is on the table. Eliminates a zombie. Against a human it is wasted (one-use, then gone).
-- Mini-games are **one-on-one**. Follow the **dealt suit**; **highest cumulative total** wins; winner **takes one card** from the loser.
+- Mini-games are **one-on-one**. Each player **chooses a suit from their hand**; **highest sum** wins; winner **takes one card** from the loser.
 - GAME CLEAR: larger faction at the end. GAME OVER: Shotgun-killed as a zombie, out of number cards, or on the smaller faction.
 
 Phase 1 only materializes the **opening deal** for **one group**.
@@ -43,9 +43,9 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
 
 ### Phase 3 — Duel resolution
 
-- Follow the dealt suit; resolve **highest cumulative total** (confirm whether that is one card or a sum).
+- Each player chooses a suit from their hand; resolve the higher **sum**.
 - Winner takes one card from the loser.
-- Legal-play checks (must follow suit if able).
+- Cards in one pile share a suit.
 
 ### Phase 4 — Specials
 
@@ -60,11 +60,17 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
 - After 20 rounds, compare living humans vs living zombies.
 - Clear / over presentation (restraint: no gore required).
 
-### Phase 6 — Automation (only if still needed)
+### Phase 6 — Watch panel (RL observation)
 
-- Simple pairing heuristic.
-- Scripted or greedy card choice so a full 20-round match can run unattended.
-- Optional: four groups, 64 seats, inter-group infection (canon tournament). Do **not** start here.
+- Second page at `/watch`: 2D admin table for all **64** players (4×16).
+- 20-round match, one click each, random legal policy, round report.
+- No in-app link to the 3D lab.
+- Dated plans: [plan-2026-09-15_10-38.md](./plan-2026-09-15_10-38.md), [plan-2026-09-15_11-02.md](./plan-2026-09-15_11-02.md), [plan-2026-09-16_06-02.md](./plan-2026-09-16_06-02.md), [plan-2026-09-16_06-06.md](./plan-2026-09-16_06-06.md), [plan-2026-09-16_06-39.md](./plan-2026-09-16_06-39.md), [plan-2026-09-16_06-44.md](./plan-2026-09-16_06-44.md).
+
+### Phase 7 — Automation / trainer (later)
+
+- Pairing heuristic, then a policy that plays a full 20-round match unattended.
+- Feed `WatchSnapshot` from a real loop. Do not start the trainer in Phase 6.
 
 ## Improvements log
 
@@ -76,6 +82,12 @@ Record post-Phase-1 upgrades here as they are agreed. Do not implement speculati
 | 2026-09-15 | Rules locked to Fandom page; lab visual (not dark neon) | done |
 | 2026-09-15 | Rounded card corners; one table per player; rebuilt wing lighting | done |
 | 2026-09-15 | Pair tables, click-to-focus camera, dressed virology wing | done |
+| 2026-09-15 | `/watch` 2D RL observation panel (64 players, no trainer) | done |
+| 2026-09-15 | `/watch` 20-round random-legal match + round report | done |
+| 2026-09-16 | Own-suit sums; opening hand is 7 cards including specials | done |
+| 2026-09-16 | Facility-wide pairing; Z copy; vaccine only on played Z; suit subsets | done |
+| 2026-09-16 | No J/Q/K; Ace counts as 1 | done |
+| 2026-09-16 | Round report: pre-play hands, round bar, Markdown export | done |
 
 ## Non-goals (until explicitly requested)
 

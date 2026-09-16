@@ -1,4 +1,4 @@
-import type { Card, Deal } from './types';
+import { HAND_SIZE, type Card, type Deal } from './types';
 
 export type DealtCard = {
   card: Card;
@@ -8,10 +8,6 @@ export type DealtCard = {
   slotCount: number;
   order: number;
 };
-
-function cardsOfKind(cards: Card[], kind: Card['kind']): Card[] {
-  return cards.filter((card) => card.kind === kind);
-}
 
 export function flattenDealSequence(deal: Deal): DealtCard[] {
   const sequence: DealtCard[] = [];
@@ -34,38 +30,12 @@ export function flattenDealSequence(deal: Deal): DealtCard[] {
     order += 1;
   };
 
-  for (let round = 0; round < 7; round += 1) {
+  for (let round = 0; round < HAND_SIZE; round += 1) {
     for (let playerIndex = 0; playerIndex < deal.players.length; playerIndex += 1) {
-      const regulars = cardsOfKind(deal.players[playerIndex]?.cards ?? [], 'regular');
-      const card = regulars[round];
+      const card = deal.players[playerIndex]?.cards[round];
       if (card) {
         push(playerIndex, card, round);
       }
-    }
-  }
-
-  for (let playerIndex = 0; playerIndex < deal.players.length; playerIndex += 1) {
-    const shotgun = cardsOfKind(deal.players[playerIndex]?.cards ?? [], 'shotgun')[0];
-    if (shotgun) {
-      push(playerIndex, shotgun, 7);
-    }
-  }
-
-  for (let playerIndex = 0; playerIndex < deal.players.length; playerIndex += 1) {
-    const cards = deal.players[playerIndex]?.cards ?? [];
-    const zombie = cardsOfKind(cards, 'zombie')[0];
-    if (zombie) {
-      const slotIndex = cards.findIndex((card) => card.kind === 'zombie');
-      push(playerIndex, zombie, slotIndex);
-    }
-  }
-
-  for (let playerIndex = 0; playerIndex < deal.players.length; playerIndex += 1) {
-    const cards = deal.players[playerIndex]?.cards ?? [];
-    const vaccine = cardsOfKind(cards, 'vaccine')[0];
-    if (vaccine) {
-      const slotIndex = cards.findIndex((card) => card.kind === 'vaccine');
-      push(playerIndex, vaccine, slotIndex);
     }
   }
 

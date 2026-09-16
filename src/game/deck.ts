@@ -16,7 +16,8 @@ export function createStandardDeck(deckIndex: number): Card[] {
 }
 
 export function createRegularPool(cardCount: number): Card[] {
-  const decksNeeded = Math.max(1, Math.ceil(cardCount / 52));
+  const deckSize = SUITS.length * RANKS.length;
+  const decksNeeded = Math.max(1, Math.ceil(cardCount / deckSize));
   const pool: Card[] = [];
   for (let deckIndex = 0; deckIndex < decksNeeded; deckIndex += 1) {
     pool.push(...createStandardDeck(deckIndex));
@@ -24,6 +25,6 @@ export function createRegularPool(cardCount: number): Card[] {
   return pool;
 }
 
-export function createSpecialCard(kind: Exclude<Card['kind'], 'regular'>, index: number): Card {
+export function createSpecialCard(kind: Exclude<Card['kind'], 'regular'>, index: number | string): Card {
   return { id: `${kind}-${index}`, kind };
 }

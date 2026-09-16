@@ -1,5 +1,5 @@
 export const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'] as const;
-export const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
+export const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'] as const;
 
 export type Suit = (typeof SUITS)[number];
 export type Rank = (typeof RANKS)[number];
@@ -31,6 +31,12 @@ export type Deal = {
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 16;
-export const REGULAR_CARDS_PER_PLAYER = 7;
+export const HAND_SIZE = 7;
 export const DEFAULT_PLAYER_COUNT = 16;
 export const DEFAULT_VACCINE_COUNT = 2;
+
+export const GROUP_COUNT = 4;
+export const GROUP_SIZE = 16;
+export const TOURNAMENT_PLAYERS = GROUP_COUNT * GROUP_SIZE;
+export const DEFAULT_VACCINES_PER_GROUP = 2;
+export const ROUND_LIMIT = 20;

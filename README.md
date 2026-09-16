@@ -1,41 +1,47 @@
 # Tughluq — Zombie Hunt
 
-Browser simulation of *Zombie Hunt* (Alice in Borderland, Netflix). Phase 1 deals opening hands for one group and shows them on a 3D wing of the National Institute of Virus Research.
+Browser simulation of *Zombie Hunt* (Alice in Borderland, Netflix). The watch page runs a 64-player tournament (4 groups × 16) for twenty rounds so we can later search for a strategy with reinforcement learning.
 
-## Prerequisite
-
-Node.js 20 or newer.
+![Watch header, selected hand, and roster](docs/screenshots/watch-overview.png)
 
 ## Run locally
+
+Node.js 20 or newer.
 
 ```bash
 make dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173). If that port is taken, Vite prints another address (often `5174`).
+Open [http://127.0.0.1:5173/watch](http://127.0.0.1:5173/watch). If port 5173 is taken, Vite prints another address (often `5174`).
 
 Other targets: `make build`, `make preview`, `make clean`.
 
-## Deal parameters
+## Match
 
-- **Players:** 2–16 (one group / one wing)
-- **Vaccines:** 0–player count
-- **Seed:** optional; leave empty for a random deal
+- **64 players**, four groups of 16. **20 rounds.**
+- Opening hand is **seven cards including specials**. Number cards are A–10 (Ace = 1). No J, Q, or K.
+- Every player gets a Shotgun. One Zombie card per group. Vaccines are random (two per group in this build).
+- Each player chooses a suit from their own hand and plays a non-empty subset. Compare sums. The winner takes one card the loser put down.
+- Specials may go down with the pile or alone. An uncancelled Zombie infects and copies itself. Shotgun kills a zombie (wasted on a human). Vaccine cancels a Zombie card played this duel.
+- **Play round** steps one random-legal round. Click a roster row to enlarge that hand.
 
-Each player receives seven number cards and one Shotgun. One Zombie card is assigned in the group. Vaccines go to distinct random players.
+![64-player roster with card-face thumbs](docs/screenshots/watch-roster.png)
 
-## Scene
+## Round report
 
-- Players sit in pairs, facing each other, at scattered lab tables.
-- Click a table to orbit around it. Click the central podium to return to the hall view.
-- Drag to orbit, scroll to zoom.
+Pick a round from the bar — only that round is on screen. Each table shows the **available** hand before the play and the **played** pile.
+
+**Export Markdown** downloads a compact `zh-md/1` log (`zh-s{seed}-r{n}.md`) meant for an LLM: pip tokens (`AS`, `10H`), `shot` / `zombie` / `vax`, factions `H` / `Z` / `X`, pre-play hands, outcomes, and a final roster.
+
+![Round report with available and played cards](docs/screenshots/watch-report.png)
 
 ## Docs
 
 | File | Contents |
 | --- | --- |
-| [`docs/rules.md`](docs/rules.md) | Working rules from the Fandom page |
+| [`docs/rules.md`](docs/rules.md) | Working rules |
+| [`docs/rules-audit.md`](docs/rules-audit.md) | Source notes vs engine |
 | [`docs/plan.md`](docs/plan.md) | Product roadmap |
 | [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) | Card art credits |
 
-Regular faces are Byron Knoll's public-domain vector cards. Specials (Zombie, Shotgun, Vaccine) were drawn for this project. See the attribution file.
+Regular faces are Byron Knoll's public-domain vector cards (A–10 in play). Specials (Zombie, Shotgun, Vaccine) were drawn for this project. See the attribution file.
