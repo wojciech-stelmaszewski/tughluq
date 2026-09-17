@@ -13,6 +13,13 @@ export function randomSeed(): number {
   return (Math.floor(Math.random() * 0xffffffff) || 1) >>> 0;
 }
 
+export function pickOne<T>(items: readonly T[], random: () => number): T | undefined {
+  if (items.length === 0) {
+    return undefined;
+  }
+  return items[Math.floor(random() * items.length)];
+}
+
 export function shuffleInPlace<T>(items: T[], random: () => number): T[] {
   for (let i = items.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));

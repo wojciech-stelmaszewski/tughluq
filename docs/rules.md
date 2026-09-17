@@ -37,6 +37,9 @@ See [rules-audit.md](./rules-audit.md) for items still open.
 - Winner takes **one card** the loser placed on the table.
 - Locked 2026-09-16: **no J / Q / K**. Ace = **1**. A tie steals nothing.
 - Specials may be placed with the pile or alone. An uncancelled Zombie still trumps the total.
+- Locked 2026-09-16: **infection is private**. A player knows their own faction. They do not know
+  the opponent's faction or the living zombie share. They know how many players are still alive.
+  `/watch` stays omniscient; the playing policy does not.
 
 ## Special cards (later phases)
 
@@ -44,7 +47,7 @@ See [rules-audit.md](./rules-audit.md) for items still open.
 
 **Shotgun** — may be used **at any time**, whether or not a Zombie card is on the table. Eliminates a zombie (stops multiplication). Ineffective against humans. **One-use**, then gone.
 
-**Vaccine** — cancels a **Zombie card placed this duel** and turns that player back into a human. Then the number sums decide the table. If no Zombie was placed, the Vaccine is spent and does nothing. **Cannot be used on oneself.**
+**Vaccine** — may be placed without knowing the opponent's faction. Cancels a **Zombie card placed this duel** and turns that player back into a human. Then the number sums decide the table. If no Zombie was placed, the Vaccine is spent and does nothing. **Cannot be used on oneself.**
 
 ## End conditions (later phases)
 

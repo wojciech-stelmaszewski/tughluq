@@ -61,3 +61,14 @@ Date: 2026-09-16. Recaps only. Fandom wiki HTML is blocked (HTTP 403). No offici
 4. **Zombie card** — attacker keeps it; loser gets a copy if they have none.
 5. **Number pile** — non-empty subset of one chosen suit.
 6. **Ranks** — locked by operator: pip cards only, Ace = 1.
+7. **Infection visibility** — locked 2026-09-16 by operator: private. Players know their own
+   faction and the living headcount. They do not know opponent faction or the living zombie share.
+   Vaccine is always legal when held; a miss is spent. `/watch` remains dealer-omniscient.
+
+## Open for the trainer (2026-09-16_17-49)
+
+Reinforcement learning needs a scalar payoff per player, which exposes one hole no source covers:
+
+- **Exact faction tie at the end.** `majorityVerdict` can report equal humans and zombies, where
+  neither side is “larger”, so nobody clears and nobody is over. Treated as `0` reward for everyone
+  until the operator rules otherwise.

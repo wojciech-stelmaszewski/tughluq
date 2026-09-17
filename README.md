@@ -14,7 +14,14 @@ make dev
 
 Open [http://127.0.0.1:5173/watch](http://127.0.0.1:5173/watch). If port 5173 is taken, Vite prints another address (often `5174`).
 
-Other targets: `make build`, `make preview`, `make clean`.
+Other targets: `make build`, `make preview`, `make test`, `make clean`.
+
+Headless matches (no browser):
+
+```bash
+npm run simulate -- --seed 1 --episodes 20 --policy randomLegal
+npm run simulate -- --seed 1 --episodes 20 --policy aggressive --reference randomLegal
+```
 
 ## Match
 
@@ -42,6 +49,7 @@ Pick a round from the bar — only that round is on screen. Each table shows the
 | [`docs/rules.md`](docs/rules.md) | Working rules |
 | [`docs/rules-audit.md`](docs/rules-audit.md) | Source notes vs engine |
 | [`docs/plan.md`](docs/plan.md) | Product roadmap |
+| [`docs/baselines-2026-09-16.md`](docs/baselines-2026-09-16.md) | Stage A policy baseline table |
 | [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) | Card art credits |
 
 Regular faces are Byron Knoll's public-domain vector cards (A–10 in play). Specials (Zombie, Shotgun, Vaccine) were drawn for this project. See the attribution file.

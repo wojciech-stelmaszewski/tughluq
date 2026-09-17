@@ -1,8 +1,8 @@
 import { cardLabel } from './cardArt';
 import { createSpecialCard } from './deck';
-import { createRng, shuffleInPlace } from './rng';
+import { createRng, pickOne, shuffleInPlace } from './rng';
 import { dealTournament, type TournamentPlayer } from './tournament';
-import { DEFAULT_VACCINES_PER_GROUP, ROUND_LIMIT, type Card, type Rank, type Suit } from './types';
+import { DEFAULT_VACCINES_PER_GROUP, ROUND_LIMIT, SUITS, type Card, type Rank, type Suit } from './types';
 
 export type MatchPlayer = TournamentPlayer & {
   infected: boolean;
@@ -17,6 +17,8 @@ export type TablePlay = {
   numbers: Card[];
   special: Card | null;
 };
+
+export const EMPTY_PLAY: TablePlay = { suit: null, numbers: [], special: null };
 
 export type DuelRecord = {
   id: string;
@@ -63,6 +65,13 @@ export type MatchState = {
   reports: RoundRecord[];
 };
 
+export type ChoosePlay = (
+  player: MatchPlayer,
+  opponent: MatchPlayer,
+  random: () => number,
+  match: MatchState,
+) => TablePlay;
+
 const EMPTY_ACTION = '—';
 
 export function rankValue(rank: Rank): number {
@@ -85,21 +94,26 @@ function displayedCards(play: TablePlay): Card[] {
   return play.special ? [...play.numbers, play.special] : [...play.numbers];
 }
 
-function pickOne<T>(items: T[], random: () => number): T | undefined {
-  if (items.length === 0) {
-    return undefined;
+function nonEmptySubsets<T>(items: T[]): T[][] {
+  const n = items.length;
+  if (n > 16) {
+    throw new Error(`Cannot enumerate subsets of ${n} cards`);
   }
-  return items[Math.floor(random() * items.length)];
-}
-
-function suitsInHand(player: MatchPlayer): Suit[] {
-  const seen = new Set<Suit>();
-  for (const card of player.cards) {
-    if (card.kind === 'regular' && card.suit) {
-      seen.add(card.suit);
+  const subsets: T[][] = [];
+  const limit = 1 << n;
+  for (let mask = 1; mask < limit; mask += 1) {
+    const subset: T[] = [];
+    for (let i = 0; i < n; i += 1) {
+      if (mask & (1 << i)) {
+        const item = items[i];
+        if (item) {
+          subset.push(item);
+        }
+      }
     }
+    subsets.push(subset);
   }
-  return [...seen];
+  return subsets;
 }
 
 function playerById(players: MatchPlayer[], id: string): MatchPlayer {
@@ -137,25 +151,39 @@ function eliminate(player: MatchPlayer, reason: string): void {
   player.lastAction = reason;
 }
 
-function legalSpecials(player: MatchPlayer, opponent: MatchPlayer): Card[] {
-  return player.cards.filter((card) => {
-    if (card.kind === 'shotgun' || card.kind === 'zombie') {
-      return true;
-    }
-    return card.kind === 'vaccine' && isInfected(opponent);
-  });
+function legalSpecials(player: MatchPlayer): Card[] {
+  return player.cards.filter(
+    (card) => card.kind === 'shotgun' || card.kind === 'zombie' || card.kind === 'vaccine',
+  );
 }
 
-function randomSubset<T>(items: T[], random: () => number): T[] {
-  if (items.length === 0) {
-    return [];
+export function getLegalActions(player: MatchPlayer): TablePlay[] {
+  const specials = legalSpecials(player);
+  const plays: TablePlay[] = [];
+  for (const suit of SUITS) {
+    const follow = player.cards.filter((card) => card.kind === 'regular' && card.suit === suit);
+    if (follow.length === 0) {
+      continue;
+    }
+    for (const numbers of nonEmptySubsets(follow)) {
+      plays.push({ suit, numbers, special: null });
+      for (const special of specials) {
+        plays.push({ suit, numbers, special });
+      }
+    }
   }
-  const kept = items.filter(() => random() < 0.5);
-  if (kept.length > 0) {
-    return kept;
+  for (const special of specials) {
+    plays.push({ suit: null, numbers: [], special });
   }
-  const fallback = pickOne(items, random);
-  return fallback ? [fallback] : [];
+  return plays;
+}
+
+function defaultChoosePlay(
+  player: MatchPlayer,
+  _opponent: MatchPlayer,
+  random: () => number,
+): TablePlay {
+  return pickOne(getLegalActions(player), random) ?? EMPTY_PLAY;
 }
 
 function consumePlayedSpecial(player: MatchPlayer, special: Card | null): void {
@@ -163,29 +191,6 @@ function consumePlayedSpecial(player: MatchPlayer, special: Card | null): void {
     return;
   }
   takeFromHand(player, special.id);
-}
-
-function pickRandomPlay(player: MatchPlayer, opponent: MatchPlayer, random: () => number): TablePlay {
-  const specials = legalSpecials(player, opponent);
-  const plays: TablePlay[] = [];
-  for (const suit of suitsInHand(player)) {
-    const follow = player.cards.filter((card) => card.kind === 'regular' && card.suit === suit);
-    if (follow.length === 0) {
-      continue;
-    }
-    const numbers = randomSubset(follow, random);
-    plays.push({ suit, numbers, special: null });
-    for (const special of specials) {
-      plays.push({ suit, numbers, special });
-    }
-  }
-  for (const special of specials) {
-    plays.push({ suit: null, numbers: [], special });
-  }
-  if (plays.length === 0) {
-    return { suit: null, numbers: [], special: null };
-  }
-  return pickOne(plays, random) ?? { suit: null, numbers: [], special: null };
 }
 
 function stealFromTable(winner: MatchPlayer, loser: MatchPlayer, pile: Card[], random: () => number): Card | null {
@@ -218,21 +223,22 @@ function playLabel(play: TablePlay): string {
 }
 
 function resolveDuel(
-  players: MatchPlayer[],
+  match: MatchState,
   leftId: string,
   rightId: string,
   round: number,
   table: number,
   random: () => number,
+  choosePlay: ChoosePlay,
 ): DuelRecord {
-  const left = playerById(players, leftId);
-  const right = playerById(players, rightId);
+  const left = playerById(match.players, leftId);
+  const right = playerById(match.players, rightId);
   const leftHand = [...left.cards];
   const rightHand = [...right.cards];
   const leftInfected = isInfected(left);
   const rightInfected = isInfected(right);
-  const leftPlay = pickRandomPlay(left, right, random);
-  const rightPlay = pickRandomPlay(right, left, random);
+  const leftPlay = choosePlay(left, right, random, match);
+  const rightPlay = choosePlay(right, left, random, match);
   consumePlayedSpecial(left, leftPlay.special);
   consumePlayedSpecial(right, rightPlay.special);
 
@@ -367,10 +373,26 @@ function livingPlayers(players: MatchPlayer[]): MatchPlayer[] {
   return players.filter((player) => player.status === 'alive');
 }
 
-function majorityVerdict(players: MatchPlayer[]): string {
+export function factionTally(players: MatchPlayer[]): { living: number; humans: number; zombies: number } {
   const living = players.filter((player) => player.status === 'alive');
   const zombies = living.filter((player) => player.infected).length;
-  const humans = living.length - zombies;
+  return { living: living.length, humans: living.length - zombies, zombies };
+}
+
+export function playerReward(player: MatchPlayer, players: MatchPlayer[]): number {
+  if (player.status !== 'alive') {
+    return 0;
+  }
+  const { humans, zombies } = factionTally(players);
+  if (zombies === humans) {
+    return 0;
+  }
+  const zombieSideWins = zombies > humans;
+  return player.infected === zombieSideWins ? 1 : 0;
+}
+
+function majorityVerdict(players: MatchPlayer[]): string {
+  const { humans, zombies } = factionTally(players);
   if (zombies > humans) {
     return `Zombies ${zombies}–${humans}. Zombie side wins.`;
   }
@@ -419,7 +441,7 @@ export function cloneMatch(match: MatchState): MatchState {
   };
 }
 
-export function playRound(match: MatchState): MatchState {
+export function playRound(match: MatchState, choosePlay: ChoosePlay = defaultChoosePlay): MatchState {
   if (!canPlayRound(match)) {
     const sealed = cloneMatch(match);
     sealed.finished = true;
@@ -443,7 +465,7 @@ export function playRound(match: MatchState): MatchState {
       continue;
     }
     table += 1;
-    duels.push(resolveDuel(next.players, leftId, rightId, next.round, table, random));
+    duels.push(resolveDuel(next, leftId, rightId, next.round, table, random, choosePlay));
   }
   if (ids.length % 2 === 1) {
     const byeId = ids[ids.length - 1];

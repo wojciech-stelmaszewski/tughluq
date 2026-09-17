@@ -67,10 +67,17 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
 - No in-app link to the 3D lab.
 - Dated plans: [plan-2026-09-15_10-38.md](./plan-2026-09-15_10-38.md), [plan-2026-09-15_11-02.md](./plan-2026-09-15_11-02.md), [plan-2026-09-16_06-02.md](./plan-2026-09-16_06-02.md), [plan-2026-09-16_06-06.md](./plan-2026-09-16_06-06.md), [plan-2026-09-16_06-39.md](./plan-2026-09-16_06-39.md), [plan-2026-09-16_06-44.md](./plan-2026-09-16_06-44.md).
 
-### Phase 7 — Automation / trainer (later)
+### Phase 7 — Automation / trainer
 
-- Pairing heuristic, then a policy that plays a full 20-round match unattended.
-- Feed `WatchSnapshot` from a real loop. Do not start the trainer in Phase 6.
+- Stage A done: policy seam, rules tests, headless runner, handwritten baselines.
+- Stage B next: a trainer that writes a new policy. Do not start the trainer from `/watch`.
+- Reward is **individual** (clear = larger side at the end) but the game is general-sum and
+  many-player, so training is **self-play**, never one agent against fixed random bots.
+- Staged: (A) policy interface + rules tests + baselines, (B) evolution strategy, (C) PPO.
+- Player view: own hand and own faction, opponent hand size, living count. Not opponent faction,
+  not zombie share. `/watch` stays omniscient.
+- Dated plan: [plan-2026-09-16_17-49.md](./plan-2026-09-16_17-49.md),
+  [tasks-2026-09-16_17-49.md](./tasks-2026-09-16_17-49.md).
 
 ## Improvements log
 
@@ -88,6 +95,9 @@ Record post-Phase-1 upgrades here as they are agreed. Do not implement speculati
 | 2026-09-16 | Facility-wide pairing; Z copy; vaccine only on played Z; suit subsets | done |
 | 2026-09-16 | No J/Q/K; Ace counts as 1 | done |
 | 2026-09-16 | Round report: pre-play hands, round bar, Markdown export | done |
+| 2026-09-16 | Redrawn `BACK.svg` (lace pattern, bovine skull medallions) | done |
+| 2026-09-16 | RL stage A: policy seam, rules tests, baselines | done |
+| 2026-09-16 | Infection private for the playing policy; watch stays dealer view | done |
 
 ## Non-goals (until explicitly requested)
 
