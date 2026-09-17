@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "simulate": "tsx src/rl/simulate.ts"
+    "simulate": "tsx src/rl/simulate.ts",
+    "train": "tsx src/rl/trainCli.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

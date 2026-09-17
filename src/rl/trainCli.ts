@@ -1,0 +1,52 @@
+import { writeFileSync } from 'node:fs';
+import { FEATURE_DIM } from './features';
+import { parseWeights, type LinearWeights } from './scorer';
+import { trainEs } from './train';
+
+function readArg(name: string, fallback: string): string {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index < 0) {
+    return fallback;
+  }
+  return process.argv[index + 1] ?? fallback;
+}
+
+function fmt(value: number): string {
+  return value.toFixed(3);
+}
+
+const seed = Number(readArg('seed', '1')) || 1;
+const generations = Math.max(1, Number(readArg('generations', '8')) || 8);
+const population = Math.max(2, Number(readArg('population', '8')) || 8);
+const episodes = Math.max(1, Number(readArg('episodes', '5')) || 5);
+const out = readArg('out', 'docs/weights-latest.json');
+const logPath = readArg('log', 'docs/train-log.md');
+
+const result = trainEs({ generations, population, episodes, seed });
+const payload: LinearWeights = {
+  kind: 'linear-v1',
+  weights: result.weights,
+  seed,
+  generation: generations,
+  fitnessVsRandom: result.log.at(-1)?.fitnessVsRandom,
+};
+parseWeights(payload);
+
+writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
+
+const lines = [
+  '# Linear ES train log',
+  '',
+  `seed ${seed} · generations ${generations} · population ${population} · episodes ${episodes} · dim ${FEATURE_DIM}`,
+  '',
+  '| Gen | vs reference | vs randomLegal | vs aggressive | zombie share | reference |',
+  '| --- | --- | --- | --- | --- | --- |',
+  ...result.log.map((row) => {
+    return `| ${row.generation} | ${fmt(row.fitnessVsReference)} | ${fmt(row.fitnessVsRandom)} | ${fmt(row.fitnessVsAggressive)} | ${fmt(row.zombieShare)} | ${row.reference} |`;
+  }),
+  '',
+  `Wrote \`${out}\`.`,
+  '',
+];
+writeFileSync(logPath, `${lines.join('\n')}\n`);
+console.log(lines.join('\n'));

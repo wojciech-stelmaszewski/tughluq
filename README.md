@@ -21,6 +21,8 @@ Headless matches (no browser):
 ```bash
 npm run simulate -- --seed 1 --episodes 20 --policy randomLegal
 npm run simulate -- --seed 1 --episodes 20 --policy aggressive --reference randomLegal
+npm run train -- --seed 1 --generations 8 --population 8 --episodes 5
+npm run simulate -- --seed 1 --episodes 20 --weights docs/weights-latest.json --reference randomLegal
 ```
 
 ## Match
@@ -50,6 +52,8 @@ Pick a round from the bar — only that round is on screen. Each table shows the
 | [`docs/rules-audit.md`](docs/rules-audit.md) | Source notes vs engine |
 | [`docs/plan.md`](docs/plan.md) | Product roadmap |
 | [`docs/baselines-2026-09-16.md`](docs/baselines-2026-09-16.md) | Stage A policy baseline table |
+| [`docs/train-log.md`](docs/train-log.md) | Linear ES train log |
+| [`docs/rl-explained.md`](docs/rl-explained.md) | How the linear trainer works |
 | [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) | Card art credits |
 
 Regular faces are Byron Knoll's public-domain vector cards (A–10 in play). Specials (Zombie, Shotgun, Vaccine) were drawn for this project. See the attribution file.

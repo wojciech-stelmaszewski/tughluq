@@ -70,14 +70,18 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
 ### Phase 7 — Automation / trainer
 
 - Stage A done: policy seam, rules tests, headless runner, handwritten baselines.
-- Stage B next: a trainer that writes a new policy. Do not start the trainer from `/watch`.
+- Stage B done: linear scorer + evolution strategy. Log:
+  [train-log.md](./train-log.md).
+- Stage C: PPO, only if we want to beat `aggressive` head-to-head. Do not start the trainer from `/watch`.
 - Reward is **individual** (clear = larger side at the end) but the game is general-sum and
   many-player, so training is **self-play**, never one agent against fixed random bots.
 - Staged: (A) policy interface + rules tests + baselines, (B) evolution strategy, (C) PPO.
 - Player view: own hand and own faction, opponent hand size, living count. Not opponent faction,
   not zombie share. `/watch` stays omniscient.
 - Dated plan: [plan-2026-09-16_17-49.md](./plan-2026-09-16_17-49.md),
-  [tasks-2026-09-16_17-49.md](./tasks-2026-09-16_17-49.md).
+  [tasks-2026-09-16_17-49.md](./tasks-2026-09-16_17-49.md),
+  [plan-2026-09-17_17-58.md](./plan-2026-09-17_17-58.md),
+  [tasks-2026-09-17_17-58.md](./tasks-2026-09-17_17-58.md).
 
 ## Improvements log
 
@@ -98,6 +102,7 @@ Record post-Phase-1 upgrades here as they are agreed. Do not implement speculati
 | 2026-09-16 | Redrawn `BACK.svg` (lace pattern, bovine skull medallions) | done |
 | 2026-09-16 | RL stage A: policy seam, rules tests, baselines | done |
 | 2026-09-16 | Infection private for the playing policy; watch stays dealer view | done |
+| 2026-09-17 | RL stage B: linear scorer + evolution strategy | done |
 
 ## Non-goals (until explicitly requested)
 
