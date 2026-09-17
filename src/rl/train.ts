@@ -20,8 +20,12 @@ export type TrainOptions = {
   population: number;
   episodes: number;
   seed: number;
+  /** Episodes for the log columns only. Keep it high: they are read as a trend, not a fitness. */
+  probeEpisodes?: number;
   sigma?: number;
   promoteEvery?: number;
+  /** Called as each generation closes, so a long run is not silent. */
+  onGeneration?: (row: GenerationLog) => void;
 };
 
 export type TrainResult = {
@@ -108,19 +112,21 @@ export function trainEs(options: TrainOptions): TrainResult {
     weights = elite;
     const elitePolicy = scoredPolicy(weights);
     const probeSeed = (genSeed ^ 0x51ed) >>> 0 || 1;
-    const probeEpisodes = Math.max(1, Math.min(options.episodes, 4));
+    const probeEpisodes = Math.max(1, options.probeEpisodes ?? options.episodes);
     const vsRandom = fitnessOf(elitePolicy, randomLegal, 'elite', 'randomLegal', probeSeed, probeEpisodes);
     const vsAggressive = fitnessOf(elitePolicy, aggressive, 'elite', 'aggressive', probeSeed, probeEpisodes);
     const zombieShare = meanZombieShare(elitePolicy, probeSeed, probeEpisodes);
 
-    log.push({
+    const row: GenerationLog = {
       generation,
       fitnessVsReference: eliteFit,
       fitnessVsRandom: vsRandom,
       fitnessVsAggressive: vsAggressive,
       zombieShare,
       reference: referenceName,
-    });
+    };
+    log.push(row);
+    options.onGeneration?.(row);
 
     if (generation % promoteEvery === 0 && eliteFit > 0) {
       reference = elitePolicy;

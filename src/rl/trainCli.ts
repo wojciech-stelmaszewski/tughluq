@@ -19,10 +19,30 @@ const seed = Number(readArg('seed', '1')) || 1;
 const generations = Math.max(1, Number(readArg('generations', '8')) || 8);
 const population = Math.max(2, Number(readArg('population', '8')) || 8);
 const episodes = Math.max(1, Number(readArg('episodes', '5')) || 5);
+const probeEpisodes = Math.max(1, Number(readArg('probe', String(episodes))) || episodes);
+const sigma = Number(readArg('sigma', '0.2')) || 0.2;
+const promoteEvery = Math.max(1, Number(readArg('promote', '2')) || 2);
 const out = readArg('out', 'docs/weights-latest.json');
 const logPath = readArg('log', 'docs/train-log.md');
 
-const result = trainEs({ generations, population, episodes, seed });
+const started = Date.now();
+const result = trainEs({
+  generations,
+  population,
+  episodes,
+  probeEpisodes,
+  sigma,
+  promoteEvery,
+  seed,
+  onGeneration: (row) => {
+    const elapsed = Math.round((Date.now() - started) / 1000);
+    process.stderr.write(
+      `gen ${row.generation}/${generations} · ${elapsed}s · ref ${fmt(row.fitnessVsReference)}` +
+        ` · vsRandom ${fmt(row.fitnessVsRandom)} · vsAggressive ${fmt(row.fitnessVsAggressive)}` +
+        ` · zombies ${fmt(row.zombieShare)} · league ${row.reference}\n`,
+    );
+  },
+});
 const payload: LinearWeights = {
   kind: 'linear-v1',
   weights: result.weights,
@@ -37,7 +57,8 @@ writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
 const lines = [
   '# Linear ES train log',
   '',
-  `seed ${seed} · generations ${generations} · population ${population} · episodes ${episodes} · dim ${FEATURE_DIM}`,
+  `seed ${seed} · generations ${generations} · population ${population} · episodes ${episodes}`,
+  `probe ${probeEpisodes} · sigma ${sigma} · promote every ${promoteEvery} · dim ${FEATURE_DIM}`,
   '',
   '| Gen | vs reference | vs randomLegal | vs aggressive | zombie share | reference |',
   '| --- | --- | --- | --- | --- | --- |',

@@ -72,7 +72,11 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
 - Stage A done: policy seam, rules tests, headless runner, handwritten baselines.
 - Stage B done: linear scorer + evolution strategy. Log:
   [train-log.md](./train-log.md).
-- Stage C: PPO, only if we want to beat `aggressive` head-to-head. Do not start the trainer from `/watch`.
+- Stage B result on a real budget (60 × 24 × 50): the linear scorer **ties** `aggressive`
+  (+0.003, CI [−0.020, 0.026]) and beats `randomLegal` by +0.265. Thirty weights cannot express
+  more than “play Zombie”, so the plateau is the model, not the budget.
+- Next: MLP scorer on the same encoders. Stage C (PPO) only after that.
+- Do not start the trainer from `/watch`.
 - Reward is **individual** (clear = larger side at the end) but the game is general-sum and
   many-player, so training is **self-play**, never one agent against fixed random bots.
 - Staged: (A) policy interface + rules tests + baselines, (B) evolution strategy, (C) PPO.
@@ -103,6 +107,8 @@ Record post-Phase-1 upgrades here as they are agreed. Do not implement speculati
 | 2026-09-16 | RL stage A: policy seam, rules tests, baselines | done |
 | 2026-09-16 | Infection private for the playing policy; watch stays dealer view | done |
 | 2026-09-17 | RL stage B: linear scorer + evolution strategy | done |
+| 2026-09-17 | Probe episodes split from the search budget; per-generation progress log | done |
+| 2026-09-17 | Real training budget: linear ES ties `aggressive`, plateau earned | done |
 
 ## Non-goals (until explicitly requested)
 

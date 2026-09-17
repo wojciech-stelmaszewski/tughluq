@@ -200,10 +200,12 @@ Worked toy: Aya has the 2 of hearts and a Zombie card.
 So the learned rule is not “Zombie alone”. It is closer to **`aggressive`**:
 play Zombie when you hold it, and prefer a fat number pile.
 
-That matches the measured result: vs `randomLegal` the elite is **+0.271**
-(Stage A `aggressive` was +0.257). Vs an `aggressive` table the elite is
-**−0.070**. Linear search found the same neighbourhood; it did not beat the
-handwritten heuristic.
+That matches the measured result. On 200 held-out episodes the elite beats
+`randomLegal` by **+0.265** (`aggressive` scores +0.251), and against an
+`aggressive` table it lands on **+0.003**, with a confidence interval of
+[−0.020, 0.026]. Linear search did not just find the same neighbourhood — it
+converged to a **tie** with the handwritten heuristic, and 60 generations could
+not push it past.
 
 ## How training works
 
@@ -277,8 +279,14 @@ flowchart LR
 The log also prints numbers we **do not** maximize: zombie share when all 64
 seats run the elite, and elite vs `aggressive`. Those are a dashboard. Mass
 infection is a story hypothesis, not the training objective. Pairing is still
-random and infection is still private, so “convert everyone” may never be the
-linear attractor.
+random and infection is still private — and the search found it anyway: with
+every seat on the elite, 70–99% of the living end up infected. The canon
+solution came out of the search, not out of the reward.
+
+Keep the probe episode count high (`--probe`). These columns are a trend, not a
+fitness, and on four matches a zombie share can only read 0.00, 0.25, 0.50,
+0.75 or 1.00 — which is exactly how the first run produced a table of round
+numbers that looked like a signal.
 
 ## What the log columns mean
 
@@ -293,7 +301,8 @@ From [`train-log.md`](./train-log.md):
 | reference | Who the 56 seats were this generation |
 
 `vs randomLegal` going up means “better than chance on a random table”.
-`vs aggressive` staying negative means “not better than the obvious heuristic”.
+`vs aggressive` reaching zero and staying there means “as good as the obvious
+heuristic, and no better”. That is where the linear model stops.
 
 ## How this differs from “try three strategies”
 
