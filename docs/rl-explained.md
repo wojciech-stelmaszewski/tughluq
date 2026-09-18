@@ -157,6 +157,11 @@ the file (noise from evolution), but they do not steer Aya this generation.
 That is why a linear search tends to rediscover a simple rule like “attach
 Zombie to a pile”, which is close to the handwritten `aggressive` baseline.
 
+The cancellation is specific to a linear scorer. A hidden layer mixes the view and the
+action inside the same unit, so the situation stops being a constant and starts
+changing how the action features are weighed — see
+[why this is what makes the hidden layer worth having](#why-this-is-what-makes-the-hidden-layer-worth-having).
+
 ## From scores to a play: softmax
 
 Suppose Aya has three legal plays and the scorer returns:
@@ -467,15 +472,74 @@ This is the part that usually surprises people. The network does **not** have on
 output per possible play. It has a single output, and it is run **once per legal
 play**.
 
+The network answers “**how good is this one play?**”, not “which play should I make?”.
+
 If Aya has 11 legal plays this turn, the network runs 11 times — same 20 view numbers,
 different 10 action numbers each time — producing 11 scores. Those 11 scores then go
 through one softmax, and one play is sampled.
 
-The reason is that the number of legal plays changes constantly. It depends on how many
-suits she holds, how many cards are in each, and which specials are in hand. A fixed
-output layer of size *N* cannot represent a choice set whose size moves between 1 and a
-few hundred. Scoring each candidate play separately sidesteps the problem entirely, and
-illegal plays are never scored at all rather than being masked out afterwards.
+#### Why not one output per play
+
+Because there is no fixed number of plays to have outputs for. Measured over 43,181
+real decisions from 40 matches:
+
+| min | median | mean | p90 | p99 | max |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 17 | 30.9 | 65 | 277 | **4131** |
+
+361 different list sizes occurred. An output layer has a fixed width, so it would need
+4131 slots, of which a typical turn would leave 4114 meaningless.
+
+The semantic problem is worse than the arithmetic one. With fixed outputs the network
+would have to learn what “output 17” means — and that depends on which cards Aya
+happens to hold this turn. In one decision it is “three hearts, no special”, in the next
+“one spade plus Zombie”. The meaning of a slot moves from turn to turn, so there is
+nothing stable to learn.
+
+Scoring each candidate separately moves the meaning of a play **onto the input**, where
+those 10 action features state it explicitly: this play totals 12, exposes 3 cards,
+dumps the whole suit, carries Zombie. What the model learns is therefore a general rule
+— “plays with these properties are good in situations like this” — which transfers to
+every turn and every hand shape. Illegal plays are simply never scored, so there is no
+masking step either.
+
+#### How to read the number
+
+It is an **unnormalised preference**, not a probability and not an expected win rate.
+On its own it means nothing; only the differences between candidates in the same
+decision matter.
+
+| Play | Score | After softmax |
+| --- | --- | --- |
+| Small hearts, no special | −2.3 | 7.6% |
+| Those hearts plus Zombie | 0.0 | 75.6% |
+| Shotgun alone | −1.5 | 16.9% |
+
+Adding 10 to all three scores changes nothing. Multiplying all three by 3 changes a
+great deal — the distribution becomes 0.1% / 98.8% / 1.1%. So the *scale* of the scores
+is meaningful even though their absolute level is not: it sets how decisive the policy
+is, separately from what it prefers.
+
+#### Why this is what makes the hidden layer worth having
+
+In one decision the 20 view numbers are identical across all candidates. That has a
+sharp consequence.
+
+For the linear model the score is `w_view·view + w_action·action`. The first term is the
+same for every candidate, so it is a constant added to every score — and a constant
+vanishes in the softmax. Only the 10 action weights actually choose the card; see
+[the linear gotcha](#the-linear-gotcha).
+
+In the network it does not cancel, because view and action enter the **same `tanh`
+together**. The situation shifts each unit's operating point and therefore changes how
+strongly a given action feature moves the score.
+
+That is the precise answer to what one output means for the move at hand: the number
+rates the play, and the hidden layer is what lets that rating **depend on the
+situation** — which is how a model expresses “a fat pile is good, *unless* I am down to
+two cards”. The linear scorer cannot state that sentence at all. That the network never
+found a better sentence to state is a separate finding, and the reason the conclusion
+below is about information rather than capacity.
 
 ### Parameters
 
@@ -679,7 +743,8 @@ the private-infection rule is what caps the policy. If it does not, the game rea
 | **Policy** | A function from “what I may know” to one legal play. The thing being trained. |
 | **Feature** | One number describing the situation or a candidate play. 30 of them. |
 | **Weight / parameter** | One tunable number inside the model. 30 for linear, 257 for the network. |
-| **Score** | The model's output for **one** legal play. Not a probability. |
+| **Score** | The model's output for **one** legal play. Not a probability; only differences within a decision matter. |
+| **Legal-move list** | Every play the engine would accept this turn. Median 17, max 4131 — which is why the model scores plays instead of enumerating them. |
 | **Softmax** | Turns a list of scores into probabilities via `exp(score) / Σ exp(scores)`, then one is sampled. |
 | **Episode** | One complete 64-player, 20-round match. About 10 ms. |
 | **Reward** | 1 if a player is alive on the larger faction at the end, else 0. Nothing in between, nothing earlier. |
