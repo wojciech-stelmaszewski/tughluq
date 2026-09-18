@@ -137,3 +137,42 @@ capacity.
 
 Weights kept at `/tmp`, not committed: a policy tied with random play is not a baseline.
 
+## MLP attempt 2 — warm start, no gain (2026-09-18)
+
+Same network, initialised to reproduce the trained linear scorer, with the perturbation scaled
+per layer. 40 generations × 24 candidates × 100 episodes, probe 150, sigma 0.1.
+
+The start was verified before training: the warm-started network scores +0.267 against
+`randomLegal`, which is the linear policy's +0.265. Training began exactly on the plateau.
+
+Held out, seed 101, 300 episodes:
+
+| Candidate | vs | Diff | 95% CI |
+| --- | --- | --- | --- |
+| mlp-8, warm, trained | `randomLegal` | +0.247 | [0.230, 0.264] |
+| mlp-8, warm, trained | `aggressive` | +0.001 | [−0.019, 0.021] |
+| linear ES | `aggressive` | +0.004 | [−0.015, 0.023] |
+
+Eighty minutes of search moved nothing. Across all 40 generations `vs aggressive` stayed
+between −0.02 and +0.01 and `vs randomLegal` between 0.24 and 0.30. A short sweep at sigma
+0.05 / 0.1 / 0.2 beforehand behaved the same way, so this is not a step-size accident.
+
+## Reading: capacity is not the binding constraint
+
+Three things were ruled out in turn. The budget (108k episodes on the linear model), the
+starting point (warm start lands on the plateau), and the step size (per-layer scaling, three
+sigmas). A 257-parameter network handed the linear solution and 40 generations of search still
+cannot beat “play Zombie when you hold it”.
+
+The remaining suspect is the **observation**. The policy sees its own hand, its own faction,
+the opponent's hand size, the round and the living count. It cannot see the opponent's faction
+— infection is private by the rule locked on 2026-09-16 — nor the zombie share, nor any
+history. Most conditional play depends on exactly that missing bit: when a shotgun kills rather
+than is wasted, when a vaccine hits rather than misses. With the faction hidden those cards are
+lotteries, and no amount of capacity turns a lottery into a decision.
+
+Cheap way to test it: give the view the opponent's faction and the zombie share, then retrain
+the **linear** model. If linear-with-more-information beats `aggressive`, information was the
+constraint all along, and the private-infection rule is what caps the policy. If it does not,
+the game itself is close to “play Zombie” and there is nothing further to learn.
+
