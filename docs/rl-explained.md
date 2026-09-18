@@ -1,18 +1,30 @@
-# How the linear trainer works (Zombie Hunt)
+# How the trainer works (Zombie Hunt)
 
-This is a walkthrough of Stage B on **this** project, not a general RL textbook.
+A walkthrough of the policy search on **this** project, not a general RL textbook.
 The game is the 64-player, 20-round *Zombie Hunt* match. The code lives in `src/rl/`.
 Saved weights: [`weights-latest.json`](./weights-latest.json). Run log: [`train-log.md`](./train-log.md).
+
+Two models were trained: a **linear scorer** (30 numbers) and a **small network**
+(257 numbers). Both are searched by the same optimiser, an evolution strategy. Both
+end up at the same strength. This file explains all three pieces — the models, the
+optimiser and the measurement — and ends with what the exercise established.
+
+Every term that could be jargon is defined in the [glossary](#glossary) at the end,
+including `sigma`, `generation`, `episode` and `probe`.
 
 ## The one sentence
 
 A **policy** is a function: *given what I am allowed to know, pick one legal play*.
-Training searches for a better function than “pick at random” by turning **30 knobs**
-(the weights) and keeping the knob settings that win more often.
+Training searches for a better function than “pick at random” by turning knobs — **30**
+of them in the linear model, **257** in the network — and keeping the settings that win
+more often.
 
 It does **not** pick a winner among `randomLegal`, `aggressive`, and `conservative`.
 Those three are handwritten yardsticks. The trainer writes a *fourth* function into
 `docs/weights-latest.json`.
+
+The sections below go in order: what the policy sees, the two models that turn that into
+a choice, the optimiser that tunes them, how a policy is measured, and what came out.
 
 ```mermaid
 flowchart LR
@@ -209,41 +221,132 @@ not push it past.
 
 ## How training works
 
-We never compute a gradient. We **nudge the knobs at random** and keep the
-nudge that scored better. That is an evolution strategy.
+### No gradients
 
-Start: `w = 30 zeros` (plays like `randomLegal`).
-Each **generation**:
+Neural networks are usually trained by backpropagation: compute how the loss would
+change if each weight changed slightly, then step every weight against that gradient.
+That is impossible to do directly here. The thing we care about — “did this player end
+up on the larger faction after 20 rounds” — is a 0 or a 1 that emerges from a discrete
+simulation with random pairing, random theft and 63 other players. There is no
+derivative of that outcome with respect to `w[28]`.
 
-1. Keep the parent `w`.
-2. Make 7 copies, each weight `+= 0.2 * gaussian noise` (`population` 8).
-3. Grade every copy with the **same** match seeds.
-4. The copy with the highest fitness becomes the new parent.
-5. Every 2 generations, if that elite still beats the current **reference**
-   league, freeze it as the new reference.
+So the optimiser is an **evolution strategy**: change the numbers at random, play the
+games, keep what scored better. It only ever needs to *evaluate* the policy, never to
+differentiate it. The cost is sample efficiency — it learns from outcomes, not from
+gradients — which is affordable because a full 64-player match takes about 10
+milliseconds.
+
+The variant used is a **(1+λ) hill climber**: one parent, λ mutated children, best one
+survives. Code: `trainEs` in `src/rl/train.ts`.
+
+### Sigma: the size of the random nudge
+
+**Sigma is one number: how far each weight is allowed to jump when making a mutated
+copy.** Formally it is the standard deviation of the Gaussian noise added to every
+parameter. It is the single most important knob in the whole trainer, so here it is in
+full.
+
+To create a child from a parent, walk through the parameters one at a time. For each
+one, draw a random number from a bell curve centred on zero whose width is sigma, and
+add it. That is the entire mutation — one line in `src/rl/train.ts`:
+
+```ts
+return weights.map((value, index) => value + sigma * (scale?.[index] ?? 1) * gaussian(random));
+```
+
+Concretely, with `sigma = 0.2` and a parent whose zombie weight is `w[28] = 1.29`, four
+children might carry `1.41`, `1.02`, `1.35` and `1.19`. Every one of the other 29
+weights is nudged independently in the same way, so a child differs from its parent in
+all coordinates at once.
+
+Because the noise is Gaussian, sigma tells you the typical size of the nudge rather
+than a hard limit:
+
+| Draw lands within | Share of the time |
+| --- | --- |
+| ±1 sigma | about 68% |
+| ±2 sigma | about 95% |
+| ±3 sigma | about 99.7% |
+
+Choosing it is a real trade-off, and it is why the logs mention sweeping it:
+
+- **Too small** and the search crawls. Every child is nearly identical to its parent,
+  so the fitness differences between them are smaller than the measurement noise and
+  selection picks essentially at random.
+- **Too large** and the search cannot hold on to anything. Every child is a wild
+  rewrite of a working policy, so good solutions get destroyed rather than refined.
+
+Three things sigma is **not**. It is not a learning rate: nothing here follows a
+gradient, and sigma sets the width of a random probe rather than the length of a step
+along a known direction. It is not a probability. And it is not annealed — it stays
+fixed for the whole run in this implementation.
+
+One shared sigma assumes every parameter lives on a similar scale. That holds for the
+linear model, whose 30 weights all end up between roughly −1.3 and +1.3. It fails
+badly for the network, which is covered under
+[the warm start](#why-sigma-had-to-become-per-parameter) once its layers have been
+introduced.
+
+### The loop
+
+Start from `model.init(seed)`: 30 zeros for the linear model, a small random draw or
+the warm start for the network. Then each **generation**:
+
+1. Keep the parent unchanged as candidate 0, so a generation can never go backwards on
+   its own measurement.
+2. Make `population − 1` mutated children, each parameter nudged as described above.
+3. Play `episodes` matches per candidate and score each one with the differential
+   fitness below. Every candidate in the generation gets the **same match seeds**, so
+   they face identical deals and identical pairings — a paired comparison, which
+   removes most of the luck from the ranking.
+4. The highest-scoring candidate becomes the parent of the next generation. It is
+   called the **elite**.
+5. Every `promote` generations, if the elite is still beating the current reference,
+   freeze it as the new reference. The opposition therefore improves as the policy
+   does, instead of remaining 56 random bots forever.
 
 ```mermaid
 flowchart TB
-  Z[w = zeros] --> G[generation]
-  G --> P[parent + 7 noisy copies]
-  P --> E[each copy plays 8 seats vs 56 reference]
-  E --> F[fitness = their clear rate minus the other 56]
-  F --> K[keep the best copy]
-  K --> R{every 2 gens and fitness > 0?}
-  R -->|yes| L[that copy becomes the new reference]
-  R -->|no| G
-  L --> G
-  K --> Out[docs/weights-latest.json]
+  Z["parent = model.init(seed)"] --> P["parent + (population−1) mutated children"]
+  P --> E["each candidate: 8 seats vs 56 reference, same seeds"]
+  E --> F["fitness = their clear rate − the other 56"]
+  F --> K[highest fitness becomes the new parent]
+  K --> R{"every `promote` gens and fitness > 0?"}
+  R -->|yes| L[that policy becomes the new reference]
+  R -->|no| P
+  L --> P
+  K --> Out[weights file]
 ```
 
-Default command:
+Steps 3 and 5 are where the wall-clock goes, and step 5 is why generations get slower
+as a run proceeds: once the reference is a trained policy, all 64 seats are running a
+scorer instead of 56 cheap random bots.
+
+### The command and its knobs
 
 ```bash
-npm run train -- --seed 1 --generations 8 --population 8 --episodes 5
+npm run train -- --model mlp --hidden 8 --warm docs/weights-latest.json \
+  --seed 1 --generations 40 --population 24 --episodes 100 --probe 150 --sigma 0.1 --promote 4
 ```
 
-Eight generations × eight copies × five matches is a few seconds in Node.
-It is a short search, not a proof of optimality.
+| Flag | Meaning | Effect if raised |
+| --- | --- | --- |
+| `--model` | `linear` or `mlp` | — |
+| `--hidden` | hidden units in the network | More capacity, more parameters to search |
+| `--warm` | linear weights file to imitate at start | Search begins at the linear plateau |
+| `--warm-preact` | pre-activation budget for the warm start | Lower is a more faithful copy |
+| `--seed` | fixes every random draw | Reproducibility, nothing else |
+| `--generations` | how many mutate-and-select rounds | Longer search, linearly more time |
+| `--population` | candidates per generation | Wider search per step |
+| `--episodes` | matches per candidate | Less selection noise, linearly more time |
+| `--probe` | matches for the log columns only | Readable trend lines, no effect on search |
+| `--sigma` | size of the random nudge | Bolder jumps; see the trade-off above |
+| `--promote` | generations between reference promotions | Slower-moving opposition |
+| `--dry-run` | write the starting weights and exit | Lets a warm start be measured before training |
+
+The trade-off worth internalising: `--generations` buys more steps, `--episodes` buys
+more certainty about which step to take. The first real run mistook the second for a
+luxury, spent 5 episodes per candidate, and selected mostly noise.
 
 ## Fitness: why 8 seats vs 56
 
@@ -316,35 +419,216 @@ heuristic, and no better”. That is where the linear model stops.
 drops the learned function into the **same** 8-vs-56 harness as `aggressive`.
 That is the only fair comparison.
 
-## The MLP, and why the work stopped here
+## The network
 
-A dot product cannot make one feature change the meaning of another, so the obvious
-next move was a network: 30 → 8 `tanh` → 1, 257 parameters, same encoders, same
-softmax. It needs two things the linear path does not. Features are divided by fixed
-scales, because a `livingCount` of 64 saturates a `tanh` unit on contact. And it starts
-from a small random draw rather than zeros, because zeros are a dead point for a
-network — every hidden activation is `tanh(0)`, so the output layer has nothing to act
-on.
+A dot product cannot let one feature change the meaning of another, so the next model
+was a neural network. Code: `src/rl/mlp.ts`.
 
-It was tried twice.
+### Topology
 
-**Cold start.** Twenty generations left it at +0.009 against `randomLegal` — random
-play. That says nothing about capacity: the linear scorer steers the softmax by pushing
-one weight to about 8, while the network's output starts as a sum of eight bounded units
-times weights near 0.18, so the softmax is nearly flat and best-of-16 directions is a
-weak search in 257 dimensions.
+Three layers, written `30 → 8 → 1`:
 
-**Warm start.** `tanh(z) ≈ z` near zero, so a network *can* reproduce a linear scorer:
-give each hidden row `eps` times the linear weights and each output weight
-`1 / (hidden · eps)`. Measured before training, that network scores +0.267 against
-`randomLegal` — the linear policy exactly. Training then starts on the plateau.
+| Layer | Size | What it is |
+| --- | --- | --- |
+| Input | 30 values | The same features as the linear scorer, rescaled |
+| Hidden | 8 units | Each unit reads all 30 inputs, applies `tanh` |
+| Output | 1 value | The score of **one** legal play |
 
-This also forced the step size to change. A faithful copy holds input weights near 0.03
-next to output weights near 44, so one shared sigma moves the first layer by 150% and
-the second by 0.1%. Each layer is now perturbed relative to its own magnitude.
+```mermaid
+flowchart LR
+  subgraph in [Input: 30 features]
+    X["x0 … x29"]
+  end
+  subgraph hid ["Hidden: 8 tanh units"]
+    H1["u1 = tanh(W1·x + b1)"]
+    H2["u2 = tanh(W2·x + b2)"]
+    Hd["…"]
+    H8["u8 = tanh(W8·x + b8)"]
+  end
+  subgraph out [Output: 1 score]
+    S["score = v·u + c"]
+  end
+  X --> H1
+  X --> H2
+  X --> Hd
+  X --> H8
+  H1 --> S
+  H2 --> S
+  Hd --> S
+  H8 --> S
+```
 
-Forty generations of 24 candidates at 100 episodes later: **+0.001** against
-`aggressive`, CI [−0.019, 0.021]. The linear policy sits at +0.004. Nothing moved.
+It is **fully connected** (every input reaches every hidden unit) and **feed-forward**
+(no loops, no memory of earlier rounds). One hidden layer, not two.
+
+### The output is one score, not a choice
+
+This is the part that usually surprises people. The network does **not** have one
+output per possible play. It has a single output, and it is run **once per legal
+play**.
+
+If Aya has 11 legal plays this turn, the network runs 11 times — same 20 view numbers,
+different 10 action numbers each time — producing 11 scores. Those 11 scores then go
+through one softmax, and one play is sampled.
+
+The reason is that the number of legal plays changes constantly. It depends on how many
+suits she holds, how many cards are in each, and which specials are in hand. A fixed
+output layer of size *N* cannot represent a choice set whose size moves between 1 and a
+few hundred. Scoring each candidate play separately sidesteps the problem entirely, and
+illegal plays are never scored at all rather than being masked out afterwards.
+
+### Parameters
+
+| Block | Count | Arithmetic |
+| --- | --- | --- |
+| Input → hidden weights | 240 | 30 inputs × 8 units |
+| Hidden biases | 8 | one per unit |
+| Hidden → output weights | 8 | one per unit |
+| Output bias | 1 | |
+| **Total** | **257** | |
+
+Those 257 numbers are the entire model, stored as a flat array in the weights file
+under `kind: "mlp-v1"`. `mlpDim(hidden)` computes the count; the layout is
+input block, then hidden biases, then output weights, then the output bias.
+
+### The activation function: tanh
+
+Each hidden unit computes a weighted sum and then squashes it through the hyperbolic
+tangent:
+
+```
+u = tanh(W·x + b)
+```
+
+`tanh` maps any real number into (−1, 1), is zero at zero, and is S-shaped:
+
+| Input `z` | `tanh(z)` | Region |
+| --- | --- | --- |
+| 0.0 | 0.000 | flat, behaves like `z` |
+| 0.5 | 0.462 | nearly linear |
+| 1.0 | 0.762 | bending |
+| 2.0 | 0.964 | nearly flat |
+| 3.0 | 0.995 | saturated |
+
+Two consequences run through everything below.
+
+**Without it the network would be pointless.** Stack two linear layers and the result
+is still linear: `v·(W·x) = (v·W)·x`, which is just another dot product. `tanh` is the
+non-linearity that lets the 8 units carve the input space into regions, so the model
+can express “a big pile is good, *unless* my hand is nearly empty”. That conditionality
+is the only reason to prefer a network here.
+
+**Saturation is the failure mode.** Past about `|z| = 3` the output barely changes, so
+the unit stops responding to its inputs. The raw features include a `livingCount` of up
+to 64 and pile sums above 40, which would push every unit straight into saturation. So
+the MLP path divides each feature by a fixed constant first (`FEATURE_SCALE` in
+`src/rl/features.ts`), landing every input in roughly [−1, 1]. The linear scorer needs
+none of this, because it can simply carry a small weight instead — which is why the
+scaling is applied only on the network path, leaving the committed linear weights
+reproducible.
+
+### Forward pass, worked through
+
+Full-size numbers are unreadable, so here is the identical computation with 3 inputs
+and 2 hidden units.
+
+Input: `x = [1.0, 0.5, 0.0]`
+
+Hidden unit 1, weights `[0.5, −0.2, 0.1]`, bias `0.0`:
+
+```
+z1 = 0.5·1.0 + (−0.2)·0.5 + 0.1·0.0 + 0.0 = 0.4
+u1 = tanh(0.4) = 0.380
+```
+
+Hidden unit 2, weights `[−0.3, 0.8, 0.2]`, bias `0.1`:
+
+```
+z2 = (−0.3)·1.0 + 0.8·0.5 + 0.2·0.0 + 0.1 = 0.2
+u2 = tanh(0.2) = 0.197
+```
+
+Output, weights `[1.5, −0.5]`, bias `0.2`:
+
+```
+score = 1.5·0.380 + (−0.5)·0.197 + 0.2 = 0.671
+```
+
+That single number is the score for one legal play. Repeat for the other legal plays,
+softmax, sample. The real model does the same thing with 30 inputs and 8 units.
+
+### Initialisation
+
+The linear scorer starts at **all zeros**, which is exactly the uniform random policy:
+every score is 0, so the softmax is flat.
+
+Zeros do not work for the network. Every hidden activation would be `tanh(0) = 0`, so
+the output weights would multiply zero and changing them would do nothing; only a
+simultaneous, lucky change in *both* layers could produce any signal. So the network
+starts from a small seeded random draw, spread `1/sqrt(30)`, in `initMlp`.
+
+## What happened when the network was trained
+
+Twice, with opposite starting points.
+
+**Cold start — never learned.** Twenty generations left it at +0.009 against
+`randomLegal`, which is random play. This says nothing about capacity. The linear
+scorer steers the softmax by driving one weight to about 8, while the freshly
+initialised network produces a sum of eight bounded units times output weights near
+0.18 — a total score range of roughly ±1.4, so the softmax starts almost flat and
+every play is near-equally likely. On top of that, picking the best of 16 random
+directions is a weak search in 257 dimensions.
+
+**Warm start — began at the plateau, stayed there.** Since `tanh(z) ≈ z` near zero, a
+network *can* imitate a linear scorer. Give every hidden row `eps` times the linear
+weights and every output weight `1/(8·eps)`; the network then computes
+`tanh(eps·w·x)/eps`, which is the linear score whenever the pre-activation stays small.
+Measured before any training, that network scored +0.267 against `randomLegal` — the
+linear policy's +0.265. Training started exactly on the plateau.
+
+### Why sigma had to become per-parameter
+
+The warm start is also what forced the step size to change shape.
+
+Imitating a linear scorer requires *small* input weights, so the pre-activations stay
+in the near-linear part of `tanh`, together with a *large* output weight to undo that
+shrinking. Measured on the real warm start: input weights average `0.03`, output
+weights are `44.5` — three orders of magnitude apart, in the same parameter vector.
+
+A shared `sigma = 0.05` applied across it would change the input weights by about 150%,
+obliterating them, while moving the output weights by 0.1%, which is nothing. The first
+layer gets destroyed and the second is effectively frozen.
+
+The fix is `mlpSigmaScale`: each parameter's nudge is multiplied by the average
+magnitude of its own layer. Sigma then means “this fraction of the layer's typical
+size”, so `sigma = 0.1` is a 10% adjustment everywhere and the one number is meaningful
+in both layers. Models that supply no `sigmaScale` — the linear one — keep a single
+shared sigma, which is why the earlier linear run still reproduces generation for
+generation.
+
+### The result
+
+Forty generations of 24 candidates at 100 episodes, from the warm start, with per-layer
+steps and after a sigma sweep at 0.05 / 0.1 / 0.2: **+0.001** against `aggressive`,
+CI [−0.019, 0.021]. The linear policy sits at +0.004. Nothing moved.
+
+### “It does not converge” — it converged; that is the problem
+
+Worth separating two different outcomes, because they look alike in a log and mean
+opposite things.
+
+The **cold-start network genuinely failed to learn**: it sat at random-play strength,
+so the search never got going.
+
+The **linear model and the warm-started network both converged**, and converged fast.
+A self-play system that has settled shows exactly the signature in the log: `vs
+reference` hovering around zero, because the elite is being measured against a copy of
+itself, while `vs randomLegal` holds a steady positive value. The linear run reached
+that state by generation 20 and held it for the next forty.
+
+So the search did its job. The disappointment is *where* it settled: on the same
+strategy as a three-line heuristic. That is a fact about this game under these rules,
+not a training failure — which is what the elimination table below is for.
 
 ## What the whole exercise established
 
@@ -388,6 +672,39 @@ zombie share to the view and retrain the **linear** model. If that beats `aggres
 the private-infection rule is what caps the policy. If it does not, the game really is
 “play Zombie” and there is nothing left to find.
 
+## Glossary
+
+| Term | In this project |
+| --- | --- |
+| **Policy** | A function from “what I may know” to one legal play. The thing being trained. |
+| **Feature** | One number describing the situation or a candidate play. 30 of them. |
+| **Weight / parameter** | One tunable number inside the model. 30 for linear, 257 for the network. |
+| **Score** | The model's output for **one** legal play. Not a probability. |
+| **Softmax** | Turns a list of scores into probabilities via `exp(score) / Σ exp(scores)`, then one is sampled. |
+| **Episode** | One complete 64-player, 20-round match. About 10 ms. |
+| **Reward** | 1 if a player is alive on the larger faction at the end, else 0. Nothing in between, nothing earlier. |
+| **Generation** | One round of “mutate the parent, play the games, keep the best”. |
+| **Population** | How many candidates exist in a generation, parent included. |
+| **Sigma** | Standard deviation of the Gaussian noise added to each parameter when making a child — the size of the random nudge. |
+| **Sigma scale** | Per-parameter multiplier on sigma, so each layer is nudged relative to its own magnitude. |
+| **Mutation** | Adding that noise to every parameter of a copy. |
+| **Elite** | The highest-fitness candidate of a generation; becomes the next parent. |
+| **(1+λ)** | One parent, λ children, best survives. The optimiser's shape. |
+| **Evolution strategy** | Optimising by random perturbation and selection rather than by gradients. |
+| **Fitness** | Candidate clear rate minus reference clear rate in the same matches. |
+| **Differential** | That subtraction. Necessary because absolute clear rate mostly measures the faction split. |
+| **Reference / league** | The policy in the other 56 seats. Starts as `randomLegal`, later a frozen elite. |
+| **Promotion** | Freezing the current elite as the new reference. |
+| **Probe** | Extra matches played only to fill the log columns. Never affects selection. |
+| **Seed** | Integer fixing every random draw, so a run replays exactly. |
+| **Common random numbers** | Giving every candidate in a generation the same seeds, so the ranking is a paired comparison. |
+| **Held-out** | Evaluation on seeds the search never saw. |
+| **Baseline** | A handwritten policy used as a yardstick: `randomLegal`, `aggressive`, `conservative`. |
+| **Plateau** | Fitness stops improving while the search keeps running. |
+| **Saturation** | A `tanh` unit pushed far enough from zero that its output stops responding. |
+| **Warm start** | Initialising the network so it reproduces the trained linear policy. |
+| **Backpropagation** | The gradient method **not** used here; there is no derivative of a match outcome. |
+
 ## Files
 
 | File | Role |
@@ -396,7 +713,8 @@ the private-infection rule is what caps the policy. If it does not, the game rea
 | `src/rl/scorer.ts` | Dot product + softmax policy |
 | `src/rl/mlp.ts` | Network scorer, warm start, per-layer step scaling |
 | `src/rl/model.ts` | What the trainer needs to know about a parameter vector |
-| `src/rl/train.ts` | Nudge, evaluate, keep elite |
+| `src/rl/train.ts` | Nudge (sigma), evaluate, keep the elite |
+| `src/rl/trainCli.ts` | Flags, progress lines, weight file, log file |
 | `src/rl/evaluate.ts` | 8 vs 56 fitness |
 | `docs/weights-latest.json` | The 30 knobs after the last train |
 | `docs/train-log.md` | Generation table + held-out scores |
