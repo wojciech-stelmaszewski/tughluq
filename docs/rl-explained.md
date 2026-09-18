@@ -316,19 +316,86 @@ heuristic, and no better”. That is where the linear model stops.
 drops the learned function into the **same** 8-vs-56 harness as `aggressive`.
 That is the only fair comparison.
 
+## The MLP, and why the work stopped here
+
+A dot product cannot make one feature change the meaning of another, so the obvious
+next move was a network: 30 → 8 `tanh` → 1, 257 parameters, same encoders, same
+softmax. It needs two things the linear path does not. Features are divided by fixed
+scales, because a `livingCount` of 64 saturates a `tanh` unit on contact. And it starts
+from a small random draw rather than zeros, because zeros are a dead point for a
+network — every hidden activation is `tanh(0)`, so the output layer has nothing to act
+on.
+
+It was tried twice.
+
+**Cold start.** Twenty generations left it at +0.009 against `randomLegal` — random
+play. That says nothing about capacity: the linear scorer steers the softmax by pushing
+one weight to about 8, while the network's output starts as a sum of eight bounded units
+times weights near 0.18, so the softmax is nearly flat and best-of-16 directions is a
+weak search in 257 dimensions.
+
+**Warm start.** `tanh(z) ≈ z` near zero, so a network *can* reproduce a linear scorer:
+give each hidden row `eps` times the linear weights and each output weight
+`1 / (hidden · eps)`. Measured before training, that network scores +0.267 against
+`randomLegal` — the linear policy exactly. Training then starts on the plateau.
+
+This also forced the step size to change. A faithful copy holds input weights near 0.03
+next to output weights near 44, so one shared sigma moves the first layer by 150% and
+the second by 0.1%. Each layer is now perturbed relative to its own magnitude.
+
+Forty generations of 24 candidates at 100 episodes later: **+0.001** against
+`aggressive`, CI [−0.019, 0.021]. The linear policy sits at +0.004. Nothing moved.
+
+## What the whole exercise established
+
+Four explanations were eliminated in order, each by an experiment rather than an
+argument:
+
+| Suspect | Ruled out by |
+| --- | --- |
+| Too few samples | 108k episodes on the linear model; the curve is flat for 40 generations |
+| Bad starting point | Warm start begins at the plateau and stays there |
+| Wrong step size | Per-layer scaling, plus sweeps at sigma 0.05 / 0.1 / 0.2 |
+| Too little capacity | 257 parameters handed the linear solution gain nothing |
+
+What survives is the **observation**. The policy knows its own hand and faction, the
+opponent's hand size, the round and the living count. It does not know whether the
+opponent is infected, because that rule was locked private on 2026-09-16. Without that
+bit, a shotgun and a vaccine are lotteries, not decisions — and no amount of capacity
+converts a lottery into a decision.
+
+So the honest summary is that under private infection this game has a simple optimum,
+and the search found it: play Zombie when you hold it. The learned policy and the
+three-line heuristic are the same strategy, reached from opposite directions.
+
+One result came for free and is worth keeping. Mass infection was never rewarded — the
+reward only says “stand on the larger side” — yet when all 64 seats run the trained
+policy, 70–99% of survivors end up infected. The canon solution from the show emerged
+from the search rather than from the objective.
+
 ## What we did not train
 
 - Who to sit against (pairing is still the environment).
 - A model of “Ken is probably a zombie”.
-- PPO / backpropagation. Stage C would swap the optimiser, not the features.
+- PPO / backpropagation. It would swap the optimiser, and the optimiser is not the
+  constraint.
 - `/watch` does not train. It is the dealer camera. Training is the CLI.
+
+## If this is ever picked up again
+
+The one experiment that would still say something: add the opponent's faction and the
+zombie share to the view and retrain the **linear** model. If that beats `aggressive`,
+the private-infection rule is what caps the policy. If it does not, the game really is
+“play Zombie” and there is nothing left to find.
 
 ## Files
 
 | File | Role |
 | --- | --- |
-| `src/rl/features.ts` | View and action numbers |
+| `src/rl/features.ts` | View and action numbers, plus the scales the MLP needs |
 | `src/rl/scorer.ts` | Dot product + softmax policy |
+| `src/rl/mlp.ts` | Network scorer, warm start, per-layer step scaling |
+| `src/rl/model.ts` | What the trainer needs to know about a parameter vector |
 | `src/rl/train.ts` | Nudge, evaluate, keep elite |
 | `src/rl/evaluate.ts` | 8 vs 56 fitness |
 | `docs/weights-latest.json` | The 30 knobs after the last train |

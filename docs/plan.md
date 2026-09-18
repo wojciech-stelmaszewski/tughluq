@@ -76,8 +76,12 @@ See the dated plan and [tasks-2026-09-15_07-26.md](./tasks-2026-09-15_07-26.md).
   (+0.003, CI [−0.020, 0.026]) and beats `randomLegal` by +0.265. Thirty weights cannot express
   more than “play Zombie”, so the plateau is the model, not the budget.
 - MLP done, both cold and warm start: it ties the same plateau. Capacity is not what caps the
-  policy, so PPO would be solving the wrong problem. Next question is whether the **private
-  infection rule** caps it — test by adding opponent faction to the view and retraining linear.
+  policy, so PPO would be solving the wrong problem.
+- **Phase 7 closed 2026-09-18.** Under private infection the game has a simple optimum and the
+  search found it. The learned policy and the `aggressive` heuristic are the same strategy
+  reached from opposite directions. Write-up: [rl-explained.md](./rl-explained.md).
+- Not planned, in order of interest if this is ever reopened: the information ablation
+  (opponent faction in the view, retrain linear), loading trained weights into `/watch`, PPO.
 - Do not start the trainer from `/watch`.
 - Reward is **individual** (clear = larger side at the end) but the game is general-sum and
   many-player, so training is **self-play**, never one agent against fixed random bots.
