@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { getLegalActions } from '../src/game/match';
 import { createRng } from '../src/game/rng';
 import { encodeView, FEATURE_DIM, normalizedFeatures } from '../src/rl/features';
-import { initMlp, mlpDim, mlpPolicy, mlpScore, parseMlp } from '../src/rl/mlp';
+import {
+  initMlp,
+  mlpDim,
+  mlpPolicy,
+  mlpScore,
+  mlpSigmaScale,
+  parseMlp,
+  warmStartMlp,
+} from '../src/rl/mlp';
 import { loadModelFile, mlpModel, modelByName } from '../src/rl/model';
 import { runEpisode } from '../src/rl/runEpisode';
 import { score } from '../src/rl/scorer';
@@ -64,6 +72,46 @@ describe('mlp scorer', () => {
 
   it('rejects a parameter vector of the wrong length', () => {
     expect(() => mlpPolicy([1, 2, 3], 8)).toThrow(/Expected/);
+  });
+});
+
+describe('warm start from linear weights', () => {
+  const linear: number[] = JSON.parse(readFileSync('docs/weights-latest.json', 'utf8')).weights;
+  const hidden = 8;
+  const params = warmStartMlp(linear, hidden, 0.5, 4);
+
+  it('ranks every pair of legal plays the same way the linear scorer does', () => {
+    expect(actions.length).toBeGreaterThan(1);
+    for (let i = 0; i < actions.length; i += 1) {
+      for (let j = i + 1; j < actions.length; j += 1) {
+        const left = actions[i];
+        const right = actions[j];
+        if (!left || !right) {
+          continue;
+        }
+        const linearGap = score(linear, view, left) - score(linear, view, right);
+        const mlpGap = mlpScore(params, hidden, view, left) - mlpScore(params, hidden, view, right);
+        expect(Math.sign(Math.round(mlpGap * 1e6))).toBe(Math.sign(Math.round(linearGap * 1e6)));
+      }
+    }
+  });
+
+  it('reproduces the linear score closely, not just its order', () => {
+    for (const play of actions) {
+      const linearScore = score(linear, view, play);
+      const mlpValue = mlpScore(params, hidden, view, play);
+      expect(Math.abs(mlpValue - linearScore)).toBeLessThan(0.1 * (1 + Math.abs(linearScore)));
+    }
+  });
+
+  it('steps each layer relative to its own magnitude', () => {
+    const scale = mlpSigmaScale(params, hidden);
+    const inputScale = scale[0] ?? 0;
+    const outputScale = scale[scale.length - 1] ?? 0;
+    expect(inputScale).toBeGreaterThan(0);
+    // The warm start needs tiny input weights and a large output gain; one shared step cannot
+    // serve both.
+    expect(outputScale).toBeGreaterThan(inputScale * 100);
   });
 });
 

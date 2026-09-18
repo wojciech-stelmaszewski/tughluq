@@ -1,6 +1,6 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { DEFAULT_HIDDEN } from './mlp';
-import { modelByName } from './model';
+import { modelByName, warmStartFromFile } from './model';
 import { trainEs } from './train';
 
 function readArg(name: string, fallback: string): string {
@@ -23,9 +23,21 @@ const probeEpisodes = Math.max(1, Number(readArg('probe', String(episodes))) || 
 const sigma = Number(readArg('sigma', '0.2')) || 0.2;
 const promoteEvery = Math.max(1, Number(readArg('promote', '2')) || 2);
 const hidden = Math.max(1, Number(readArg('hidden', String(DEFAULT_HIDDEN))) || DEFAULT_HIDDEN);
-const model = modelByName(readArg('model', 'linear'), hidden);
+const warmPath = process.argv.includes('--warm') ? readArg('warm', '') : '';
+const warmPreact = Number(readArg('warm-preact', '0.5')) || 0.5;
+const warmStart = warmPath
+  ? warmStartFromFile(JSON.parse(readFileSync(warmPath, 'utf8')), hidden, warmPreact, seed)
+  : undefined;
+const model = modelByName(readArg('model', 'linear'), hidden, warmStart);
 const out = readArg('out', 'docs/weights-latest.json');
 const logPath = readArg('log', 'docs/train-log.md');
+
+if (process.argv.includes('--dry-run')) {
+  const init = model.file(model.init(seed), { seed, generation: 0 });
+  writeFileSync(out, `${JSON.stringify(init, null, 2)}\n`);
+  console.log(`${model.label}: wrote the starting point to ${out} without training`);
+  process.exit(0);
+}
 
 const started = Date.now();
 const result = trainEs({

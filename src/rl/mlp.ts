@@ -1,6 +1,6 @@
 import { EMPTY_PLAY, type TablePlay } from '../game/match';
 import { createRng } from '../game/rng';
-import { FEATURE_DIM, normalizedFeatures, type PlayerView } from './features';
+import { FEATURE_DIM, FEATURE_SCALE, normalizedFeatures, type PlayerView } from './features';
 import type { Policy } from './policy';
 import { softmaxSample } from './scorer';
 
@@ -28,6 +28,78 @@ export function initMlp(hidden: number, seed: number): number[] {
   const random = createRng(seed >>> 0 || 1);
   const spread = 1 / Math.sqrt(FEATURE_DIM);
   return Array.from({ length: mlpDim(hidden) }, () => (random() * 2 - 1) * spread);
+}
+
+/**
+ * Build a network that reproduces a trained linear scorer, so the search starts at the linear
+ * plateau instead of below random play.
+ *
+ * `tanh(z) ≈ z` near zero, so with every hidden row set to `eps · w` and every output weight to
+ * `1 / (hidden · eps)` the network computes `tanh(eps · w·x) / eps`, which is the linear score
+ * as long as the pre-activation stays small. `preact` is that budget: lower is a more faithful
+ * copy, higher keeps the output weights small enough for the search to still move them.
+ *
+ * The linear weights were fitted against raw features, so they are rescaled here for the
+ * normalized ones the MLP reads.
+ */
+export function warmStartMlp(
+  linear: number[],
+  hidden: number,
+  preact: number,
+  seed: number,
+): number[] {
+  const scaled = linear.map((value, index) => value * (FEATURE_SCALE[index] ?? 1));
+  // Features sit in [-1, 1], so half the absolute weight mass is a fair guess at a typical score.
+  const typical = scaled.reduce((sum, value) => sum + Math.abs(value), 0) * 0.5;
+  const eps = typical > 0 ? preact / typical : 1;
+  const out = 1 / (hidden * eps);
+
+  const random = createRng(seed >>> 0 || 1);
+  const params: number[] = [];
+  for (let unit = 0; unit < hidden; unit += 1) {
+    for (const value of scaled) {
+      // 1% jitter so the units are not exact clones from the first step.
+      params.push(eps * value * (1 + (random() * 2 - 1) * 0.01));
+    }
+  }
+  for (let unit = 0; unit < hidden; unit += 1) {
+    params.push(0);
+  }
+  for (let unit = 0; unit < hidden; unit += 1) {
+    params.push(out);
+  }
+  params.push(0);
+  return assertMlp(params, hidden);
+}
+
+/**
+ * Per-coordinate step multipliers for the search.
+ *
+ * A warm-started network holds input weights near 0.03 next to output weights near 44, because
+ * faithfully copying a linear scorer needs small pre-activations and a large output gain. One
+ * shared sigma would wreck the first layer while barely touching the second, so each layer is
+ * perturbed relative to its own magnitude. Biases move on the scale of the layer they shift.
+ */
+export function mlpSigmaScale(params: number[], hidden: number): number[] {
+  const inputEnd = FEATURE_DIM * hidden;
+  const biasEnd = inputEnd + hidden;
+  const outputEnd = biasEnd + hidden;
+  const meanAbs = (from: number, to: number): number => {
+    let sum = 0;
+    for (let i = from; i < to; i += 1) {
+      sum += Math.abs(params[i] ?? 0);
+    }
+    return Math.max(sum / Math.max(1, to - from), 1e-3);
+  };
+
+  const inputScale = meanAbs(0, inputEnd);
+  const outputScale = meanAbs(biasEnd, outputEnd);
+  return params.map((_, index) => {
+    if (index < biasEnd) {
+      return inputScale;
+    }
+    return outputScale;
+  });
 }
 
 export function assertMlp(params: number[], hidden: number): number[] {

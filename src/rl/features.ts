@@ -86,7 +86,7 @@ export function concatFeatures(view: PlayerView, play: TablePlay): number[] {
  * its weights; a tanh unit cannot, and `livingCount` of 64 would saturate it at once.
  * Constants, not measured statistics, so a weight file stays reproducible.
  */
-const FEATURE_SCALE: number[] = [
+export const FEATURE_SCALE: number[] = [
   // four suits: count, sum, high
   4, 20, 10, 4, 20, 10, 4, 20, 10, 4, 20, 10,
   // shotgun, zombie, vaccine, infected

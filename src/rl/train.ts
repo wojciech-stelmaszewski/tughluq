@@ -41,8 +41,13 @@ function gaussian(random: () => number): number {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function perturb(weights: number[], sigma: number, random: () => number): number[] {
-  return weights.map((value) => value + sigma * gaussian(random));
+function perturb(
+  weights: number[],
+  sigma: number,
+  scale: number[] | null,
+  random: () => number,
+): number[] {
+  return weights.map((value, index) => value + sigma * (scale?.[index] ?? 1) * gaussian(random));
 }
 
 function meanZombieShare(policy: Policy, startSeed: number, episodes: number): number {
@@ -86,8 +91,9 @@ export function trainEs(options: TrainOptions): TrainResult {
   for (let generation = 1; generation <= options.generations; generation += 1) {
     const candidates = [weights];
     const extra = Math.max(0, options.population - 1);
+    const scale = model.sigmaScale?.(weights) ?? null;
     for (let i = 0; i < extra; i += 1) {
-      candidates.push(perturb(weights, sigma, random));
+      candidates.push(perturb(weights, sigma, scale, random));
     }
 
     const genSeed = (options.seed + generation * 9973) >>> 0 || 1;
