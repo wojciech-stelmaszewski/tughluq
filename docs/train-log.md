@@ -111,3 +111,29 @@ npm run simulate -- --seed 101 --episodes 200 --weights docs/weights-latest.json
 Wall clock: 47 minutes. Generations get slower after the first promotion, because the 56
 reference seats then run the scored policy instead of `randomLegal`.
 
+## MLP attempt 1 — cold start, did not train (2026-09-18)
+
+30 → 8 `tanh` → 1, 257 parameters, random init, 20 generations × 16 candidates × 30 episodes,
+sigma 0.05.
+
+| Candidate | vs | Diff | 95% CI |
+| --- | --- | --- | --- |
+| mlp-8, cold start | `randomLegal` | +0.009 | [−0.015, 0.034] |
+| linear ES | `randomLegal` | +0.265 | [0.245, 0.286] |
+
+The network never left random play. For comparison the linear scorer was already at +0.22
+after its **first** generation.
+
+This is a search failure, not a verdict on capacity. The linear model steers the softmax by
+pushing a single weight to roughly 8, which one or two sigma-0.2 steps reach. The MLP output
+is a sum of eight bounded `tanh` units times output weights near ±0.18, so scores start in a
+band of about ±1.4 and the softmax is nearly flat; the output layer would have to grow tenfold
+before any preference becomes decisive. Meanwhile best-of-16 random directions is a weak
+search in 257 dimensions.
+
+Next attempt warm-starts the network from the trained linear weights, so training begins at
+the plateau instead of below random play. Only then does a comparison say anything about
+capacity.
+
+Weights kept at `/tmp`, not committed: a policy tied with random play is not a baseline.
+

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
-import { FEATURE_DIM } from './features';
-import { parseWeights, type LinearWeights } from './scorer';
+import { DEFAULT_HIDDEN } from './mlp';
+import { modelByName } from './model';
 import { trainEs } from './train';
 
 function readArg(name: string, fallback: string): string {
@@ -22,6 +22,8 @@ const episodes = Math.max(1, Number(readArg('episodes', '5')) || 5);
 const probeEpisodes = Math.max(1, Number(readArg('probe', String(episodes))) || episodes);
 const sigma = Number(readArg('sigma', '0.2')) || 0.2;
 const promoteEvery = Math.max(1, Number(readArg('promote', '2')) || 2);
+const hidden = Math.max(1, Number(readArg('hidden', String(DEFAULT_HIDDEN))) || DEFAULT_HIDDEN);
+const model = modelByName(readArg('model', 'linear'), hidden);
 const out = readArg('out', 'docs/weights-latest.json');
 const logPath = readArg('log', 'docs/train-log.md');
 
@@ -34,6 +36,7 @@ const result = trainEs({
   sigma,
   promoteEvery,
   seed,
+  model,
   onGeneration: (row) => {
     const elapsed = Math.round((Date.now() - started) / 1000);
     process.stderr.write(
@@ -43,22 +46,19 @@ const result = trainEs({
     );
   },
 });
-const payload: LinearWeights = {
-  kind: 'linear-v1',
-  weights: result.weights,
+const payload = model.file(result.weights, {
   seed,
   generation: generations,
   fitnessVsRandom: result.log.at(-1)?.fitnessVsRandom,
-};
-parseWeights(payload);
+});
 
 writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
 
 const lines = [
-  '# Linear ES train log',
+  `# ES train log — ${model.label}`,
   '',
   `seed ${seed} · generations ${generations} · population ${population} · episodes ${episodes}`,
-  `probe ${probeEpisodes} · sigma ${sigma} · promote every ${promoteEvery} · dim ${FEATURE_DIM}`,
+  `probe ${probeEpisodes} · sigma ${sigma} · promote every ${promoteEvery} · dim ${model.dim}`,
   '',
   '| Gen | vs reference | vs randomLegal | vs aggressive | zombie share | reference |',
   '| --- | --- | --- | --- | --- | --- |',

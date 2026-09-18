@@ -81,6 +81,30 @@ export function concatFeatures(view: PlayerView, play: TablePlay): number[] {
   return vector;
 }
 
+/**
+ * Per-feature divisors so every input lands near [-1, 1]. A linear scorer folds scale into
+ * its weights; a tanh unit cannot, and `livingCount` of 64 would saturate it at once.
+ * Constants, not measured statistics, so a weight file stays reproducible.
+ */
+const FEATURE_SCALE: number[] = [
+  // four suits: count, sum, high
+  4, 20, 10, 4, 20, 10, 4, 20, 10, 4, 20, 10,
+  // shotgun, zombie, vaccine, infected
+  1, 1, 1, 1,
+  // regularCount, opponentHandSize, round (already /20), livingCount
+  7, 10, 1, 64,
+  // action: pileSum, pileSize, highRank, suitShare, handShare, regularsLeft
+  20, 4, 10, 1, 1, 7,
+  // action: no special, shotgun, zombie, vaccine
+  1, 1, 1, 1,
+];
+
+/** Same features as `concatFeatures`, scaled for a saturating activation. */
+export function normalizedFeatures(view: PlayerView, play: TablePlay): number[] {
+  const raw = concatFeatures(view, play);
+  return raw.map((value, index) => value / (FEATURE_SCALE[index] ?? 1));
+}
+
 export function encodeAction(play: TablePlay, view: PlayerView): number[] {
   const pileSize = play.numbers.length;
   const pileSum = handTotal(play.numbers);

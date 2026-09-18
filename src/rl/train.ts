@@ -2,9 +2,9 @@ import { factionTally } from '../game/match';
 import { createRng } from '../game/rng';
 import { aggressive, randomLegal } from './baselines';
 import { evaluateDifferential } from './evaluate';
+import { LINEAR_MODEL, type Model } from './model';
 import type { Policy } from './policy';
 import { runEpisode } from './runEpisode';
-import { scoredPolicy, zeroWeights } from './scorer';
 
 export type GenerationLog = {
   generation: number;
@@ -24,6 +24,8 @@ export type TrainOptions = {
   probeEpisodes?: number;
   sigma?: number;
   promoteEvery?: number;
+  /** Defaults to the linear scorer, which is what Stage B trained. */
+  model?: Model;
   /** Called as each generation closes, so a long run is not silent. */
   onGeneration?: (row: GenerationLog) => void;
 };
@@ -74,8 +76,9 @@ function fitnessOf(
 export function trainEs(options: TrainOptions): TrainResult {
   const sigma = options.sigma ?? 0.2;
   const promoteEvery = options.promoteEvery ?? 2;
+  const model = options.model ?? LINEAR_MODEL;
   const random = createRng(options.seed ^ 0x9e3779b9);
-  let weights = zeroWeights();
+  let weights = model.init(options.seed);
   let reference: Policy = randomLegal;
   let referenceName = 'randomLegal';
   const log: GenerationLog[] = [];
@@ -96,7 +99,7 @@ export function trainEs(options: TrainOptions): TrainResult {
         continue;
       }
       const fit = fitnessOf(
-        scoredPolicy(candidate),
+        model.policy(candidate),
         reference,
         `gen${generation}-${i}`,
         referenceName,
@@ -110,7 +113,7 @@ export function trainEs(options: TrainOptions): TrainResult {
     }
 
     weights = elite;
-    const elitePolicy = scoredPolicy(weights);
+    const elitePolicy = model.policy(weights);
     const probeSeed = (genSeed ^ 0x51ed) >>> 0 || 1;
     const probeEpisodes = Math.max(1, options.probeEpisodes ?? options.episodes);
     const vsRandom = fitnessOf(elitePolicy, randomLegal, 'elite', 'randomLegal', probeSeed, probeEpisodes);

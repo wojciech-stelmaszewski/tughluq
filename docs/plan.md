@@ -109,6 +109,8 @@ Record post-Phase-1 upgrades here as they are agreed. Do not implement speculati
 | 2026-09-17 | RL stage B: linear scorer + evolution strategy | done |
 | 2026-09-17 | Probe episodes split from the search budget; per-generation progress log | done |
 | 2026-09-17 | Real training budget: linear ES ties `aggressive`, plateau earned | done |
+| 2026-09-18 | MLP scorer + model dispatch in the trainer and weight files | done |
+| 2026-09-18 | MLP cold start does not train; warm start from linear weights next | open |
 
 ## Non-goals (until explicitly requested)
 

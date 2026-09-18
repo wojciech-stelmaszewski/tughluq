@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { POLICIES, type PolicyName } from './baselines';
 import { evaluateDifferential } from './evaluate';
 import type { Policy } from './policy';
+import { loadModelFile } from './model';
 import { runEpisode } from './runEpisode';
-import { parseWeights, scoredPolicy } from './scorer';
 
 function readArg(name: string, fallback: string): string {
   const index = process.argv.indexOf(`--${name}`);
@@ -28,13 +28,12 @@ function fmt(value: number): string {
 const seed = Number(readArg('seed', '1')) || 1;
 const episodes = Math.max(1, Number(readArg('episodes', '20')) || 20);
 const weightsPath = process.argv.includes('--weights') ? readArg('weights', '') : '';
-const policyName = weightsPath ? 'weights' : readPolicy('policy', 'randomLegal');
+const loaded = weightsPath ? loadModelFile(JSON.parse(readFileSync(weightsPath, 'utf8'))) : null;
+const policyName = loaded ? loaded.label : readPolicy('policy', 'randomLegal');
 const referenceName = process.argv.includes('--reference')
   ? readPolicy('reference', 'randomLegal')
   : null;
-const policy: Policy = weightsPath
-  ? scoredPolicy(parseWeights(JSON.parse(readFileSync(weightsPath, 'utf8'))))
-  : POLICIES[policyName as PolicyName];
+const policy: Policy = loaded ? loaded.policy : POLICIES[policyName as PolicyName];
 
 if (referenceName) {
   const result = evaluateDifferential({
